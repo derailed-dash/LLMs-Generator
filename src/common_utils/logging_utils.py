@@ -5,6 +5,10 @@ import os
 
 
 def setup_logger(app_name: str) -> logging.Logger:
+    # Suppress verbose logging from ADK and GenAI libraries - INFO logging is quite verbose
+    logging.getLogger("google_adk").setLevel(logging.WARN)
+    logging.getLogger("google_genai").setLevel(logging.WARN)
+
     """Sets up and a logger for the application."""
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     app_logger = logging.getLogger(app_name)

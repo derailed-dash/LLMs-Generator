@@ -2058,6 +2058,7 @@ dependencies = [
     { name = "google-genai" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "tenacity" },
     { name = "uvicorn" },
 ]
 
@@ -2079,7 +2080,6 @@ dev = [
     { name = "nest-asyncio" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
-    { name = "tenacity" },
 ]
 
 [package.metadata]
@@ -2098,6 +2098,7 @@ requires-dist = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.4.6" },
+    { name = "tenacity" },
     { name = "types-pyyaml", marker = "extra == 'lint'", specifier = "~=6.0.12" },
     { name = "types-requests", marker = "extra == 'lint'", specifier = "~=2.32.4" },
     { name = "uvicorn", specifier = "~=0.34.3" },
@@ -2109,7 +2110,6 @@ dev = [
     { name = "nest-asyncio" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
-    { name = "tenacity" },
 ]
 
 [[package]]

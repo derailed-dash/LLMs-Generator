@@ -17,6 +17,7 @@ dependencies = [
     "fastapi~=0.115.14",
     "uvicorn~=0.34.3", # means >= 0.34.3 but < 0.35
     "pyyaml",
+    "tenacity",
 ]
 
 requires-python = ">=3.12,<3.13"
@@ -26,7 +27,6 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "nest-asyncio",
-    "tenacity",
 ]
 
 [project.optional-dependencies]
