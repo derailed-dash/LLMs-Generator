@@ -1,36 +1,18 @@
 import os
 
-from crewai.tools import BaseTool
 from crewai_tools import FileReadTool
+from google.adk.tools import ToolContext
 from google.adk.tools.crewai_tool import CrewaiTool
-from pydantic import BaseModel, Field
 
 from .config import logger
 
-
-class FileReadInput(BaseModel):
-    file_path: str = Field(description="The path to the file to read.")
-
-class CustomFileReadTool(BaseTool):
-    name: str = "FileRead"
-    description: str = "Reads the contents of a file"
-    args_schema: type[BaseModel] = FileReadInput
-
-    def _run(self, **kwargs) -> str:
-        logger.debug("CustomFileReadTool._run called with kwargs: %s", kwargs)
-        file_path = kwargs.get('file_path')
-        if file_path is None:
-            raise ValueError("No file path provided to CustomFileReadTool.")
-        file_path_str: str = file_path
-        # Instantiate the original FileReadTool and use it
-        original_file_read_tool = FileReadTool()
-        return original_file_read_tool.run(file_path)
+file_read_tool = FileReadTool()
 
 # Wrap the custom tool with CrewaiTool for ADK
 adk_file_read_tool = CrewaiTool(
     name="FileRead",
     description="Reads the contents of a file",
-    tool=CustomFileReadTool()
+    tool=file_read_tool
 )
 
 def _get_repo_details(repo_path: str) -> tuple[str, str]:
@@ -41,7 +23,7 @@ def _get_repo_details(repo_path: str) -> tuple[str, str]:
     return owner, repo_name
 
 
-def discover_files(repo_path: str) -> dict[str, list[str]]:
+def discover_files(repo_path: str, tool_context: ToolContext) -> dict[str, list[str]]:
     """Discovers all relevant files in the repository and returns a directory map.
 
     Args:
@@ -62,6 +44,7 @@ def discover_files(repo_path: str) -> dict[str, list[str]]:
                 directory_map[directory].append(file_path)
                 logger.debug("Adding %s to directory map", file_path)
 
+    tool_context.state["directory_map"] = directory_map
     logger.debug("Exiting discover_files.")
     return directory_map
 

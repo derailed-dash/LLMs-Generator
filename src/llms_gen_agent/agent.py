@@ -3,6 +3,7 @@ This module defines the main agent for the LLMS-Generator application.
 """
 
 from google.adk.agents import Agent
+from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 from google.genai.types import GenerateContentConfig
 
@@ -17,11 +18,12 @@ generate_llms_coordinator = Agent(
     name="generate_llms_coordinator",
     description="An agent that generates a llms.txt file for a given repository.",
     model=config.model,
+    sub_agents=[document_summariser_agent, project_summariser_agent],
     tools=[
-        discover_files,
-        generate_llms_txt,
-        AgentTool(agent=document_summariser_agent),
-        AgentTool(agent=project_summariser_agent),
+        FunctionTool(discover_files),
+        FunctionTool(generate_llms_txt),
+        # AgentTool(agent=document_summariser_agent),
+        # AgentTool(agent=project_summariser_agent),
     ],
     instruction="""You are an expert in analyzing code repositories and generating `llms.txt` files.
 Your goal is to create a comprehensive and accurate `llms.txt` file that will help other LLMs
@@ -31,18 +33,11 @@ absolute path to the repository.
 Here's the detailed process you should follow:
 1.  **Discover Files**: Use the `discover_files` tool with the provided `repo_path` to get a
     `directory_map` of all relevant files.
-2.  **Generate Project Overview**: Use the `project_summariser_agent` with the `repo_path`
-    and extracted `repo_name` to get the project's main overview.
-3.  **Summarize Files**: Iterate through all file paths in the `directory_map`. For each file,
-    call the `document_summariser_agent` to get its summary. Collect these into a dictionary
-    where keys are file paths and values are their summaries.
-4.  **Generate Section Summaries**: For each directory (section) in the `directory_map`, generate
-    a concise summary. You can use a generic placeholder or generate a summary based on the
-    directory name. Collect these into a dictionary where keys are section names and values are
-    their summaries.
-5.  **Generate llms.txt**: Finally, call the `generate_llms_txt` tool, providing the `repo_path`,
-    the `directory_map`, the `project_overview`, the collected `file_summaries`, and the
-    `section_summaries`.
+2.  **Summarize Files**: Iterate through all files in `directory_map`. For each file,
+    call the `document_summariser_agent` to get its summary. Return the summary as a dictionary of {file_path: summary}
+3.  **Collate Summaries**: Combine the summaries into a single dict of {file_path: summary}
+
+Output this dictionary in a table.
 """,
     generate_content_config=GenerateContentConfig(
         temperature=0.6,
@@ -52,3 +47,11 @@ Here's the detailed process you should follow:
 )
 
 root_agent = generate_llms_coordinator
+
+# 4.  **Generate Section Summaries**: For each directory (section) in the `directory_map`, generate
+#     a concise summary. You can use a generic placeholder or generate a summary based on the
+#     directory name. Collect these into a dictionary where keys are section names and values are
+#     their summaries.
+# 5.  **Generate llms.txt**: Finally, call the `generate_llms_txt` tool, providing the `repo_path`,
+#     the `directory_map`, the `project_overview`, the collected `file_summaries`, and the
+#     `section_summaries`.
