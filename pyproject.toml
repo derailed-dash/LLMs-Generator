@@ -1,0 +1,101 @@
+[project]
+name = "llms-generator"
+version = "0.1.0"
+description = "An agentic solution designed to create a `llms.txt` file for any given repo or folder"
+authors = [
+    {name = "Dazbo (Darren Lester)", email = "derailed.dash@gmail.com"},
+]
+dependencies = [
+    "google-adk",
+    "google-genai",
+    "google-cloud-logging",
+    "google-cloud-aiplatform[adk,evaluation,agent_engines]",
+    "google-cloud-secret-manager",
+    "python-dotenv",
+    "crewai-tools",
+    # Web framework
+    "fastapi~=0.115.14",
+    "uvicorn~=0.34.3", # means >= 0.34.3 but < 0.35
+    "pyyaml",
+]
+
+requires-python = ">=3.12,<3.13"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "nest-asyncio",
+    "tenacity",
+]
+
+[project.optional-dependencies]
+
+jupyter = [
+    "jupyter",
+    "ipython"
+]
+lint = [
+    "ruff>=0.4.6",
+    "mypy~=1.17.0",
+    "codespell~=2.4.1",
+    "types-pyyaml~=6.0.12",
+    "types-requests~=2.32.4",
+]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "C",  # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP", # pyupgrade
+    "RUF", # ruff specific rules
+]
+# ignore line too long, too complex, two blank lines, trailing whitespace 
+ignore = ["C901", "E302", "W291"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.mypy]
+disallow_untyped_calls = false     # Prohibit calling functions that lack type annotations.
+disallow_untyped_defs = false      # Allow defining functions without type annotations.
+disallow_incomplete_defs = true    # Prohibit defining functions with incomplete type annotations.
+no_implicit_optional = true        # Require `Optional[T]` for variables that can be `None`.
+check_untyped_defs = true          # Type-check the body of functions without annotations. Catch potential mismatches.
+disallow_subclassing_any = true    # Prohibit a class from inheriting from a value of type `Any`.
+warn_incomplete_stub = true        # Warn about incomplete type stubs (`.pyi` files).
+warn_redundant_casts = true        # Warn if a type cast is unnecessary.
+warn_unused_ignores = true         # Warn about `# type: ignore` comments that are no longer needed.
+warn_unreachable = true            # Warn about code that is unreachable.
+follow_imports = "silent"          # Type-check imported modules but suppress errors from them.
+ignore_missing_imports = true      # Suppress errors about unresolved imports.
+explicit_package_bases = true      # Enforce explicit declaration of package bases.
+disable_error_code = ["misc", "no-any-return", "no-untyped-def"]
+
+exclude = [".venv"]
+
+[tool.codespell]
+ignore-words-list = "rouge"
+skip = "./locust_env/*,uv.lock,.venv,./src/frontend,**/*.ipynb"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.pytest.ini_options]
+pythonpath = "."
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["src/tests"] # This helps pytest to find tests, making collection faster
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llms_gen_agent", "src/common_utils"]
