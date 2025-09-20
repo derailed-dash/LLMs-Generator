@@ -7,11 +7,43 @@ Author: Darren Lester
 ## Table of Contents
 
 - [Repo Overview](#repo-overview)
+- [Getting Started](#getting-started)
 - [How to Use the Generated llms.txt](#how-to-use-the-generated-llmstxt)
 - [Associated Articles](#associated-articles)
 - [Useful Commands](#useful-commands)
   - [Testing](#testing)
   - [Running in a Local Container](#running-in-a-local-container)
+
+## Getting Started
+
+To get started with LLMS-Generator, follow these steps:
+
+### Prerequisites
+
+*   **uv:** Ensure you have `uv` installed for Python package and environment management. If not, you can install it by following the instructions on the [uv website](https://astral.sh/uv/install/).
+*   **Google Cloud SDK:** Install the Google Cloud SDK to interact with GCP services. Follow the official [Google Cloud SDK documentation](https://cloud.google.com/sdk/docs/install) for installation instructions.
+*   **make:** Ensure `make` is installed on your system. It's typically available on most Unix-like systems.
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/AnswerDotAI/llms-generator.git
+    cd llms-generator
+    ```
+2.  **Set up your environment:**
+    Run the setup script to configure your Google Cloud project and authentication.
+    ```bash
+    source scripts/setup-env.sh
+    ```
+    This script will guide you through setting up the necessary environment variables and authenticating with Google Cloud.
+3.  **Install dependencies:**
+    Use `make install` to install all required Python dependencies using `uv`.
+    ```bash
+    make install
+    ```
+
+After completing these steps, your environment will be set up, and all dependencies will be installed, ready for development or running the agent.
 
 ## Repo Overview
 
