@@ -1,5 +1,5 @@
 """Includes all shared libraries for the agent."""
 
-from . import agent
+from .agent import root_agent
 
-__all__ = ["agent"]
+__all__ = ["root_agent"]

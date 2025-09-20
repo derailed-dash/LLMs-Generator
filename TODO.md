@@ -2,7 +2,7 @@
 # TODO
 
 - [ ] Add logging during subagent calls - maybe with callbacks?
-- [ ] Eliminate 429/quote issues when calling Gemini, particularly from `document_summariser_agent`.
+- [x] Eliminate 429/quote issues when calling Gemini, particularly from `document_summariser_agent`.
 - [ ] Complete project summarisation step.
 - [ ] Complete final `llms.txt` file creation.
 - [ ] Remove temporary restriction on number of docs summarised.

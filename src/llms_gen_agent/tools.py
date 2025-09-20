@@ -26,42 +26,38 @@ def _get_repo_details(repo_path: str) -> tuple[str, str]:
     return owner, repo_name
 
 
-def discover_files(
-    repo_path: str,
-    tool_context: ToolContext,
-    excluded_dirs: set[str] | None = None,
-) -> dict[str, list[str]]:
-    """Discovers all relevant files in the repository and returns a directory map.
+def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
+    """Discovers all relevant files in the repository and returns a list of file paths.
 
     Args:
         repo_path: The absolute path to the repository to scan.
-        tool_context: The tool context.
-        excluded_dirs: A set of directory names to exclude.
 
     Returns:
-        A dictionary mapping directories to lists of file paths.
+        A dictionary with "status" (success/failure) and "files" (a list of file paths).
     """
     logger.debug("Entering discover_files with repo_path: %s", repo_path)
-    if excluded_dirs is None:
-        excluded_dirs = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache"}
     directory_map: dict[str, list[str]] = {}
-    for root, subdirs, files in os.walk(repo_path):
-        subdirs[:] = [d for d in subdirs if d not in excluded_dirs]
-        for file in files:
-            # For now, we'll stick with markdown files, but this can be expanded.
-            if file.endswith(".md"):
-                file_path = os.path.join(root, file)
-                directory = os.path.dirname(file_path)
-                if directory not in directory_map:
-                    directory_map[directory] = []
-                directory_map[directory].append(file_path)
+    try:
+        excluded_dirs = {'.git', '.venv', 'node_modules', '__pycache__', '.pytest_cache'}
+        for root, subdirs, files in os.walk(repo_path):
+            subdirs[:] = [d for d in subdirs if d not in excluded_dirs]
+            for file in files:
+                # For now, we'll stick with markdown files, but this can be expanded.
+                if file.endswith(".md"):
+                    file_path = os.path.join(root, file)
+                    directory = os.path.dirname(file_path)
+                    if directory not in directory_map:
+                        directory_map[directory] = []
+                    directory_map[directory].append(file_path)
 
-    tool_context.state["directory_map"] = directory_map
-    for directory, files in directory_map.items():
-        logger.debug(f"Directory: {directory}, Files: {files}")
-
-    logger.debug("Exiting discover_files.")
-    return directory_map
+        all_files = [file for files_list in directory_map.values() for file in files_list]
+        tool_context.state["files"] = all_files
+        logger.debug("".join([f"{file}\n" for file in all_files]))
+        logger.debug("Exiting discover_files.")
+        return {"status": "success", "files": all_files}
+    except Exception as e:
+        logger.error("Error in discover_files: %s", e)
+        return {"status": "failure", "files": []}
 
 def generate_llms_txt(
     repo_path: str,
