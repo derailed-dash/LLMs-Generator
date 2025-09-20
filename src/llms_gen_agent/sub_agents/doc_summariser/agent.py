@@ -16,6 +16,16 @@ config = get_config()
 
 # --- Dynamic instruction provider for content_summarizer_agent ---
 def content_summarizer_instruction_provider(context: ReadonlyContext) -> str:
+    """ 
+    We have already read each file and stored its contents in session.state["path-of-this-file"].
+    It is easy to get our agent to expand {files} which is stored as a session state key.
+    But it's not easy to get the agent to understand how to retrieve keys using the values of {files}.
+
+    So to solve this problem, we'll create a dynamic prompt where we expand {files} to obtain
+    all the paths. Each path is then sequentially used as the session key to retrieve the content.
+
+    Then we can summarise the content for each file, in one LLM call.
+    """
     # Get the list of file paths that were discovered
     files_to_summarize = context.state.get('files', [])
 
@@ -43,7 +53,8 @@ def content_summarizer_instruction_provider(context: ReadonlyContext) -> str:
     ]
 
     for file_path, content in all_file_contents_for_prompt.items():
-        prompt_parts.append(f"File: {file_path}\nContent:\n{content}\n---")
+        prompt_parts.append(f"File: {file_path}\n")
+        prompt_parts.append(f"Content:\n{content}\n---\n")
 
     prompt_parts.append("""\n
         **Output Format:**
@@ -101,14 +112,15 @@ file_reader_agent = Agent(
     name="file_reader_agent",
     description="An agent that reads the content of multiple files and stores them in session state.",
     model=Gemini(
-        model=config.model,
+        model="config.model",
         retry_options=HttpRetryOptions(
-            initial_delay=1,
-            attempts=5
+            initial_delay=2,
+            attempts=5,
+            exp_base=2,
+            max_delay=60
         )
     ),
     instruction="""You have a list of files: {files}.
-       Process the first 10 files from this list.
 
        For EACH file path (e.g., '/home/user/project/README.md') in the list, 
        you MUST read the file content using the `adk_file_read_tool`.
@@ -131,8 +143,10 @@ content_summarizer_agent = Agent(
     model=Gemini(
         model=config.model,
         retry_options=HttpRetryOptions(
-            initial_delay=1,
-            attempts=5
+            initial_delay=2,
+            attempts=5,
+            exp_base=2,
+            max_delay=60
         )
     ),
     instruction=content_summarizer_instruction_provider, # <--- Use the dynamic instruction provider

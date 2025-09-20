@@ -24,7 +24,9 @@ generate_llms_coordinator = Agent(
         model=config.model,
         retry_options=HttpRetryOptions(
             initial_delay=2,
-            attempts=5
+            attempts=5,
+            exp_base=2,
+            max_delay=60
         )
     ),        
     instruction="""You are an expert in analyzing code repositories and generating `llms.txt` files.
@@ -52,8 +54,7 @@ Here's the detailed process you should follow:
     The tool will determine other required values from session state.
 6.  **Respond with the final set of `doc_summaries`**
     Finally, respond to the user confirming whether the `llms.txt` creation was successful.
-    State the path where the file has been created, which is stored in sesssion state key `llms_txt_path`.
-    Then, print the contents of the file, which are stored in the session state under the key `llms_content`.
+    State the path where the file has been created, which is stored in session state key `llms_txt_path`.
 """,
     tools=[
         discover_files, # automatically wrapped as FunctionTool
