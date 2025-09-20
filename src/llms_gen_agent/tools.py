@@ -1,18 +1,21 @@
 import os
 
-from crewai_tools import FileReadTool
+# from crewai_tools import FileReadTool
 from google.adk.tools import ToolContext
-from google.adk.tools.crewai_tool import CrewaiTool
+from google.adk.tools.langchain_tool import LangchainTool
+from langchain_community.tools import ReadFileTool
 
+# from google.adk.tools.crewai_tool import CrewaiTool
 from .config import logger
 
-file_read_tool = FileReadTool()
+read_file_tool = ReadFileTool()
+
 
 # Wrap the custom tool with CrewaiTool for ADK
-adk_file_read_tool = CrewaiTool(
+adk_file_read_tool = LangchainTool(
     name="FileRead",
     description="Reads the contents of a file",
-    tool=file_read_tool
+    tool=read_file_tool
 )
 
 def _get_repo_details(repo_path: str) -> tuple[str, str]:
@@ -42,9 +45,9 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict[str, list[
                 if directory not in directory_map:
                     directory_map[directory] = []
                 directory_map[directory].append(file_path)
-                logger.debug("Adding %s to directory map", file_path)
 
     tool_context.state["directory_map"] = directory_map
+    logger.debug(f"Returning {directory_map}.")
     logger.debug("Exiting discover_files.")
     return directory_map
 

@@ -11,7 +11,8 @@ document_summariser_agent = Agent(
     model=config.model,
     name="document_summariser_agent",
     instruction="""Summarise the contents of this document in three sentences or fewer. Only return the summary.
-    To do this, you must use the `adk_file_read_tool` to read the document content by passing the file path as the 'file_path' argument.
+    To do this, you must use the `adk_file_read_tool` to read the document content 
+    by passing the file path as the 'input' argument.
     """,
     tools=[
         adk_file_read_tool,

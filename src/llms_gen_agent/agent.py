@@ -18,12 +18,11 @@ generate_llms_coordinator = Agent(
     name="generate_llms_coordinator",
     description="An agent that generates a llms.txt file for a given repository.",
     model=config.model,
-    sub_agents=[document_summariser_agent, project_summariser_agent],
     tools=[
         FunctionTool(discover_files),
         FunctionTool(generate_llms_txt),
-        # AgentTool(agent=document_summariser_agent),
-        # AgentTool(agent=project_summariser_agent),
+        AgentTool(agent=document_summariser_agent),
+        AgentTool(agent=project_summariser_agent),
     ],
     instruction="""You are an expert in analyzing code repositories and generating `llms.txt` files.
 Your goal is to create a comprehensive and accurate `llms.txt` file that will help other LLMs
@@ -33,8 +32,10 @@ absolute path to the repository.
 Here's the detailed process you should follow:
 1.  **Discover Files**: Use the `discover_files` tool with the provided `repo_path` to get a
     `directory_map` of all relevant files.
-2.  **Summarize Files**: Iterate through all files in `directory_map`. For each file,
-    call the `document_summariser_agent` to get its summary. Return the summary as a dictionary of {file_path: summary}
+2.  **Summarize Files**: Iterate through all values in `directory_map`. Each value is a file. 
+    We will process only the first five files in the dictionary. For each file in these first five:
+    call the `document_summariser_agent` to get its summary. Leave a one second delay between each call.
+    Return the summary as a dictionary of {file_path: summary}
 3.  **Collate Summaries**: Combine the summaries into a single dict of {file_path: summary}
 
 Output this dictionary in a table.
