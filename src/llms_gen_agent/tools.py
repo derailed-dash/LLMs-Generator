@@ -47,7 +47,9 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict[str, list[
                 directory_map[directory].append(file_path)
 
     tool_context.state["directory_map"] = directory_map
-    logger.debug(f"Returning {directory_map}.")
+    for directory, files in directory_map.items():
+        logger.debug(f"Directory: {directory}, Files: {files}")
+
     logger.debug("Exiting discover_files.")
     return directory_map
 

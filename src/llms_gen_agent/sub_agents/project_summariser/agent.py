@@ -20,7 +20,7 @@ project_summariser_agent = Agent(
     generate_content_config=GenerateContentConfig(
         temperature=0.6,
         top_p=1,
-        max_output_tokens=1024
+        max_output_tokens=8000
     ),
     output_key="project_summary"
 )

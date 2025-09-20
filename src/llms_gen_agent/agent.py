@@ -3,7 +3,6 @@ This module defines the main agent for the LLMS-Generator application.
 """
 
 from google.adk.agents import Agent
-from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 from google.genai.types import GenerateContentConfig
 
@@ -19,8 +18,8 @@ generate_llms_coordinator = Agent(
     description="An agent that generates a llms.txt file for a given repository.",
     model=config.model,
     tools=[
-        FunctionTool(discover_files),
-        FunctionTool(generate_llms_txt),
+        discover_files, # automatically wrapped as FunctionTool
+        generate_llms_txt, # automatically wrapped as FunctionTool
         AgentTool(agent=document_summariser_agent),
         AgentTool(agent=project_summariser_agent),
     ],
@@ -32,18 +31,18 @@ absolute path to the repository.
 Here's the detailed process you should follow:
 1.  **Discover Files**: Use the `discover_files` tool with the provided `repo_path` to get a
     `directory_map` of all relevant files.
-2.  **Summarize Files**: Iterate through all values in `directory_map`. Each value is a file. 
-    We will process only the first five files in the dictionary. For each file in these first five:
-    call the `document_summariser_agent` to get its summary. Leave a one second delay between each call.
-    Return the summary as a dictionary of {file_path: summary}
-3.  **Collate Summaries**: Combine the summaries into a single dict of {file_path: summary}
+    In your response to the user, print this map.
+2.  **Summarize Files**: Use `document_summariser_agent` to process the files in the `directory_map`.
+    The `document_summariser_agent` will return the summaries as `document_summaries`
+    which is a dictionary of {file_path: summary}.
+3.  Respond with the final set of `document_summaries`.
+    In your final response to the user, print these summaries as a table.
 
-Output this dictionary in a table.
 """,
     generate_content_config=GenerateContentConfig(
         temperature=0.6,
         top_p=1,
-        max_output_tokens=1024
+        max_output_tokens=32768
     )
 )
 
