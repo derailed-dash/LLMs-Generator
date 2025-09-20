@@ -25,5 +25,5 @@ document_summariser_agent = Agent(
         top_p=1,
         max_output_tokens=32000
     ),
-    output_key="document_summaries"
+    output_key="doc_summaries"
 )

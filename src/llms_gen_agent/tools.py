@@ -10,7 +10,6 @@ from .config import logger
 
 read_file_tool = ReadFileTool()
 
-
 # Wrap the custom tool with CrewaiTool for ADK
 adk_file_read_tool = LangchainTool(
     name="FileRead",
@@ -31,6 +30,9 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict[str, list[
 
     Args:
         repo_path: The absolute path to the repository to scan.
+
+    Returns:
+        A dictionary mapping directories to lists of file paths.
     """
     logger.debug("Entering discover_files with repo_path: %s", repo_path)
     directory_map: dict[str, list[str]] = {}
@@ -57,7 +59,7 @@ def generate_llms_txt(
     repo_path: str,
     directory_map: dict[str, list[str]],
     project_overview: str,
-    file_summaries: dict[str, str],
+    doc_summaries: dict[str, str],
     section_summaries: dict[str, str],
 ) -> str:
     """
@@ -73,7 +75,7 @@ def generate_llms_txt(
     logger.debug("Entering generate_llms_txt for repo_path: %s", repo_path)
     logger.debug("Directory map contains %d entries.", len(directory_map))
     logger.debug("Project overview length: %d", len(project_overview))
-    logger.debug("File summaries count: %d", len(file_summaries))
+    logger.debug("File summaries count: %d", len(doc_summaries))
     logger.debug("Section summaries count: %d", len(section_summaries))
 
     llms_txt_path = os.path.join(repo_path, "llms.txt")
@@ -100,7 +102,7 @@ def generate_llms_txt(
             for file_path in sorted(files):
                 link_text = os.path.basename(file_path)
                 relative_path = os.path.relpath(file_path, repo_path)
-                summary = file_summaries.get(file_path, "No summary available.")
+                summary = doc_summaries.get(file_path, "No summary available.")
                 f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
             f.write("\n")
 

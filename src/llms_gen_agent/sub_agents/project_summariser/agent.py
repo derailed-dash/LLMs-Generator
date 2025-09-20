@@ -12,7 +12,7 @@ project_summariser_agent = Agent(
     name="project_summariser_agent",
     instruction="""Summarise the contents of this project in three sentences or fewer. Only return the summary.
     To do this, you must use the `adk_file_read_tool` to read relevant project files (e.g., README.md) 
-    by passing the file path as the 'file_path' argument.
+    by passing the file path as the 'input' argument.
     """,
     tools=[
         adk_file_read_tool,
