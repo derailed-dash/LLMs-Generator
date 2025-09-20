@@ -1,4 +1,4 @@
-"""Configure the Agent and Logging"""
+"""This module provides configuration for the LLMS-Generator agent."""
 
 import functools
 import os
@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import google.auth
 
+from common_utils.exceptions import ConfigError
 from common_utils.logging_utils import setup_logger
 
 agent_name = os.environ.setdefault("AGENT_NAME", "llms_gen_agent")
@@ -29,7 +30,7 @@ def get_config() -> Config:
 
     _, project_id = google.auth.default()
     if not project_id:
-        raise ValueError("GCP Project ID not set. Have you run scripts/setup-env.sh?")
+        raise ConfigError("GCP Project ID not set. Have you run scripts/setup-env.sh?")
     location = os.environ.setdefault(
         "GOOGLE_CLOUD_LOCATION", "global"
     )  # assume set as env var, but fail back to global
@@ -49,3 +50,4 @@ def get_config() -> Config:
         model=model,
         genai_use_vertexai=genai_use_vertexai,
     )
+

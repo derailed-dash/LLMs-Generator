@@ -1,4 +1,5 @@
-"""Summarises the contents of a document"""
+"""This module defines the project summariser agent."""
+
 from google.adk import Agent
 from google.genai.types import GenerateContentConfig
 

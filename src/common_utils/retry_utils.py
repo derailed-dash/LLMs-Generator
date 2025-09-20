@@ -1,3 +1,5 @@
+"""Provide a retry decorator for handling transient errors."""
+
 import logging
 from functools import wraps
 

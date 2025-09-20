@@ -1,4 +1,4 @@
-"""Shared logging utility."""
+"""This module provides a shared logging utility for the application."""
 
 import logging
 import os

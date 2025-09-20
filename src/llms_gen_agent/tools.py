@@ -1,3 +1,5 @@
+"""This module provides tools for the LLMS-Generator agent."""
+
 import os
 
 # from crewai_tools import FileReadTool
@@ -5,7 +7,6 @@ from google.adk.tools import ToolContext
 from google.adk.tools.langchain_tool import LangchainTool
 from langchain_community.tools import ReadFileTool
 
-# from google.adk.tools.crewai_tool import CrewaiTool
 from .config import logger
 
 read_file_tool = ReadFileTool()
@@ -25,18 +26,25 @@ def _get_repo_details(repo_path: str) -> tuple[str, str]:
     return owner, repo_name
 
 
-def discover_files(repo_path: str, tool_context: ToolContext) -> dict[str, list[str]]:
+def discover_files(
+    repo_path: str,
+    tool_context: ToolContext,
+    excluded_dirs: set[str] | None = None,
+) -> dict[str, list[str]]:
     """Discovers all relevant files in the repository and returns a directory map.
 
     Args:
         repo_path: The absolute path to the repository to scan.
+        tool_context: The tool context.
+        excluded_dirs: A set of directory names to exclude.
 
     Returns:
         A dictionary mapping directories to lists of file paths.
     """
     logger.debug("Entering discover_files with repo_path: %s", repo_path)
+    if excluded_dirs is None:
+        excluded_dirs = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache"}
     directory_map: dict[str, list[str]] = {}
-    excluded_dirs = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache"}
     for root, subdirs, files in os.walk(repo_path):
         subdirs[:] = [d for d in subdirs if d not in excluded_dirs]
         for file in files:
