@@ -80,8 +80,6 @@ def after_file_read_callback(
         logger.warning("tool_response is a {type(tool_response)}. Expected str or dict.")
 
     tool_context.state[args["file_path"]] = content
-
-    logger.debug("Exiting after_file_read_callback for tool: %s", tool_name)
     return tool_response    
 
 # def generate_llms_txt(repo_path: str, doc_summaries_json: AggregatedSummariesOutput, tool_context: ToolContext) -> dict:
@@ -135,7 +133,7 @@ def generate_llms_txt(repo_path: str, doc_summaries: dict[str, str], tool_contex
             # f.write(f"{section_summaries.get(section_name, f'An overview of the {section_name} section.')}\n\n")
 
             section_summaries = [(file_path, summary) for file_path, summary in doc_summaries.items() 
-                                                       if file_path.startswith(directory)]
+                                                       if os.path.dirname(file_path) == directory]
 
             for file_path, summary in sorted(section_summaries):
                 link_text = os.path.basename(file_path)
@@ -143,6 +141,7 @@ def generate_llms_txt(repo_path: str, doc_summaries: dict[str, str], tool_contex
                 f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
             f.write("\n")
 
+    logger.debug("Exiting generate_llms_txt. llms.txt generated at %s", llms_txt_path)
     tool_context.state["llms_txt_path"] = llms_txt_path
     # Read the generated file content and store it in session state
     with open(llms_txt_path) as f:
