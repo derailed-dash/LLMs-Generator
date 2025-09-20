@@ -1,9 +1,10 @@
 """This module provides tools for the LLMS-Generator agent."""
 
 import os
+from typing import Any
 
-# from crewai_tools import FileReadTool
 from google.adk.tools import ToolContext
+from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.langchain_tool import LangchainTool
 from langchain_community.tools import ReadFileTool
 
@@ -15,7 +16,7 @@ read_file_tool = ReadFileTool()
 adk_file_read_tool = LangchainTool(
     name="FileRead",
     description="Reads the contents of a file",
-    tool=read_file_tool
+    tool=read_file_tool, 
 )
 
 def _get_repo_details(repo_path: str) -> tuple[str, str]:
@@ -50,47 +51,77 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
                         directory_map[directory] = []
                     directory_map[directory].append(file_path)
 
+        all_dirs = list(directory_map.keys())
+        tool_context.state["dirs"] = all_dirs # directories only
+        logger.debug("Dirs\n:" + "\n".join([str(dir) for dir in all_dirs]))
+
+        # Create a single list of all the files
         all_files = [file for files_list in directory_map.values() for file in files_list]
         tool_context.state["files"] = all_files
-        logger.debug("".join([f"{file}\n" for file in all_files]))
+        logger.debug("Files\n:" + "\n".join([str(file) for file in all_files]))
         logger.debug("Exiting discover_files.")
         return {"status": "success", "files": all_files}
     except Exception as e:
         logger.error("Error in discover_files: %s", e)
         return {"status": "failure", "files": []}
 
-def generate_llms_txt(
-    repo_path: str,
-    directory_map: dict[str, list[str]],
-    project_overview: str,
-    doc_summaries: dict[str, str],
-    section_summaries: dict[str, str],
-) -> str:
+def after_file_read_callback(
+    tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, tool_response: Any) -> Any | None:
+    tool_name = tool.name
+    logger.debug("Entering after_file_read_callback for tool: %s", tool_name)
+    logger.debug(f"Args: {args}")
+    # logger.debug(f"Tool response: {tool_response}")
+
+    if isinstance(tool_response, str):
+        content = tool_response # The tool_response itself is the content
+    elif isinstance(tool_response, dict) and "content" in tool_response:
+        content = tool_response["content"]
+    else:
+        logger.warning("tool_response is a {type(tool_response)}. Expected str or dict.")
+
+    tool_context.state[args["file_path"]] = content
+
+    logger.debug("Exiting after_file_read_callback for tool: %s", tool_name)
+    return tool_response    
+
+# def generate_llms_txt(repo_path: str, doc_summaries_json: AggregatedSummariesOutput, tool_context: ToolContext) -> dict:
+def generate_llms_txt(repo_path: str, doc_summaries: dict[str, str], tool_context: ToolContext) -> dict:
     """
     Generates a llms.txt file for the repository in Markdown format.
 
     Args:
         repo_path: The absolute path to the repository to scan.
-        directory_map: A dictionary mapping directories to lists of file paths.
-        project_overview: A summary of the entire project.
-        file_summaries: A dictionary mapping file paths to their summaries.
-        section_summaries: A dictionary mapping section names to their summaries.
+        doc_summaries_json: An instance of AggregatedSummariesOutput containing the document summaries.        
+
+    Other required data will be retrieved from session state.
+
+    Returns:
+        A dictionary with "status" (success/failure) and the path to the generated file.
     """
     logger.debug("Entering generate_llms_txt for repo_path: %s", repo_path)
-    logger.debug("Directory map contains %d entries.", len(directory_map))
-    logger.debug("Project overview length: %d", len(project_overview))
-    logger.debug("File summaries count: %d", len(doc_summaries))
-    logger.debug("Section summaries count: %d", len(section_summaries))
+    dirs = tool_context.state.get("dirs", [])
+    files = tool_context.state.get("files", [])
+    # doc_summaries = {item.file_path: item.summary for item in doc_summaries_json.summaries}
 
-    llms_txt_path = os.path.join(repo_path, "llms.txt")
+    logger.debug("We have %d directories.", len(dirs))
+    logger.debug("We have %d files", len(files))
+    logger.debug("We have %d sumamries", len(doc_summaries))
+    # logger.debug("Section summaries count: %d", len(section_summaries))
+
+    # Create variable llms_txt_path - It should be the current location where the user is, in a folder called temp.
+    # Create the temp if it doesn't exit.
+    temp_dir = os.path.join(os.getcwd(), "temp")
+    os.makedirs(temp_dir, exist_ok=True)
+    llms_txt_path = os.path.join(temp_dir, "llms.txt") 
+
     owner, repo_name = _get_repo_details(repo_path)
     base_url = f"https://github.com/{owner}/{repo_name}/blob/main/" if owner else ""
 
     with open(llms_txt_path, "w") as f:
         f.write(f"# {repo_name} Sitemap\n\n")
-        f.write(f"{project_overview}\n\n")
+        f.write("Placeholder for overview\n\n") # TODO: add real overview
 
-        for directory, files in sorted(directory_map.items()):
+        for directory in dirs:
             section_name = (
                 os.path.relpath(directory, repo_path)
                 .replace("/", " ")
@@ -101,15 +132,21 @@ def generate_llms_txt(
                 section_name = "Home"
 
             f.write(f"## {section_name}\n\n")
-            f.write(f"{section_summaries.get(section_name, f'An overview of the {section_name} section.')}\n\n")
+            # f.write(f"{section_summaries.get(section_name, f'An overview of the {section_name} section.')}\n\n")
 
-            for file_path in sorted(files):
+            section_summaries = [(file_path, summary) for file_path, summary in doc_summaries.items() 
+                                                       if file_path.startswith(directory)]
+
+            for file_path, summary in sorted(section_summaries):
                 link_text = os.path.basename(file_path)
                 relative_path = os.path.relpath(file_path, repo_path)
-                summary = doc_summaries.get(file_path, "No summary available.")
                 f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
             f.write("\n")
 
     logger.debug("Exiting generate_llms_txt. llms.txt generated at %s", llms_txt_path)
-    return f"llms.txt file generated successfully at {llms_txt_path}"
-
+    tool_context.state["llms_txt_path"] = llms_txt_path
+    # Read the generated file content and store it in session state
+    with open(llms_txt_path) as f:
+        llms_content = f.read()
+    tool_context.state["llms_content"] = llms_content
+    return {"status": "success", "llms_txt_path": llms_txt_path}

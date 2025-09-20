@@ -23,8 +23,8 @@ generate_llms_coordinator = Agent(
     model=Gemini(
         model=config.model,
         retry_options=HttpRetryOptions(
-            initial_delay=1,
-            attempts=3
+            initial_delay=2,
+            attempts=5
         )
     ),        
     instruction="""You are an expert in analyzing code repositories and generating `llms.txt` files.
@@ -38,15 +38,22 @@ Here's the detailed process you should follow:
 2.  **Check Files List**: Check you received a success response and a list of files.
     If not, you should provide an appropriate response to the user and STOP HERE.
 3.  **Summarize Files**: Delegate to the `document_summariser_agent` Agent Tool.
-    This tool does NOT require any arguments. The `document_summariser_agent` will 
-    read the list of files from the session state under the key 'files' (which was populated by the
-    `discover_files` tool). The `document_summariser_agent` will then return the full set of summaries as
-    `doc_summaries` as a dictionary of format {{file_path: summary}}.
-4.  **Check Summary Response**: you should have received a dictionary called `doc_summaries` containing all 
-    the files originally discovered, with each mapped to a summary.
+    **CRITICAL: This tool MUST be called with NO arguments.**
+    The `document_summariser_agent` will read the list of files from the session state under the key 'files' 
+    (which was populated by the `discover_files` tool). 
+    The `document_summariser_agent` will then return the full set of summaries as JSON 
+    with a single key `summaries` that contains a dictionary of all the path:summary pairs.
+    **Example of correct call:** `document_summariser_agent()`
+4.  **Check Summary Response**: you should have received a JSON response containing the summaries.
+    This contains all the files originally discovered, with each mapped to a summary.
     If so, continue. If not, you should provide an appropriate response to the user and STOP HERE.
-5.  Respond with the final set of `doc_summaries`.
-    In your final response to the user, print these summaries as a table.
+5.  **Generate `llms.txt**: Call the `generate_llms_txt` tool.
+    Provide `repo_path` and `doc_summaries` as arguments.
+    The tool will determine other required values from session state.
+6.  **Respond with the final set of `doc_summaries`**
+    Finally, respond to the user confirming whether the `llms.txt` creation was successful.
+    State the path where the file has been created, which is stored in sesssion state key `llms_txt_path`.
+    Then, print the contents of the file, which are stored in the session state under the key `llms_content`.
 """,
     tools=[
         discover_files, # automatically wrapped as FunctionTool
@@ -67,6 +74,4 @@ root_agent = generate_llms_coordinator
 #     a concise summary. You can use a generic placeholder or generate a summary based on the
 #     directory name. Collect these into a dictionary where keys are section names and values are
 #     their summaries.
-# 5.  **Generate llms.txt**: Finally, call the `generate_llms_txt` tool, providing the `repo_path`,
-#     the `directory_map`, the `project_overview`, the collected `doc_summaries`, and the
-#     `section_summaries`.
+
