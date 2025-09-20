@@ -143,7 +143,6 @@ def generate_llms_txt(repo_path: str, doc_summaries: dict[str, str], tool_contex
                 f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
             f.write("\n")
 
-    logger.debug("Exiting generate_llms_txt. llms.txt generated at %s", llms_txt_path)
     tool_context.state["llms_txt_path"] = llms_txt_path
     # Read the generated file content and store it in session state
     with open(llms_txt_path) as f:
