@@ -1,7 +1,6 @@
 """Configure the Agent and Logging"""
 
 import functools
-import logging
 import os
 from dataclasses import dataclass
 
