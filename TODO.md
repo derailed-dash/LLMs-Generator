@@ -5,9 +5,9 @@
 - [x] Add callback to ensure doc summariser agent creates output in the correct JSON format.
 - [x] Add sequential agent such that all files are read first, and then all content is summarised second.
 - [x] Add callback to capture the output of read files and store in session state.
-- [ ] Complete project summarisation step.
+- [x] Complete project summarisation step.
 - [ ] Fewer sections, controlled by folder depth.
-- [ ] Complete final `llms.txt` file creation.
+- [x] Complete final `llms.txt` file creation.
 - [ ] Remove temporary restriction on number of docs summarised.
 - [ ] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
 - [ ] Make repo public.

@@ -9,7 +9,6 @@ from google.genai.types import GenerateContentConfig, HttpRetryOptions
 
 from .config import get_config
 from .sub_agents.doc_summariser import document_summariser_agent
-from .sub_agents.project_summariser import project_summariser_agent
 from .tools import discover_files, generate_llms_txt
 
 config = get_config()
@@ -52,15 +51,14 @@ Here's the detailed process you should follow:
 5.  **Generate `llms.txt**: Call the `generate_llms_txt` tool.
     Provide `repo_path` and `doc_summaries` as arguments.
     The tool will determine other required values from session state.
-6.  **Respond with the final set of `doc_summaries`**
+6.  **Response**
     Finally, respond to the user confirming whether the `llms.txt` creation was successful.
     State the path where the file has been created, which is stored in session state key `llms_txt_path`.
 """,
     tools=[
         discover_files, # automatically wrapped as FunctionTool
         generate_llms_txt, # automatically wrapped as FunctionTool
-        AgentTool(agent=document_summariser_agent),
-        AgentTool(agent=project_summariser_agent),
+        AgentTool(agent=document_summariser_agent)
     ],
     generate_content_config=GenerateContentConfig(
         temperature=0.2,
@@ -70,9 +68,4 @@ Here's the detailed process you should follow:
 )
 
 root_agent = generate_llms_coordinator
-
-# 4.  **Generate Section Summaries**: For each directory (section) in the `directory_map`, generate
-#     a concise summary. You can use a generic placeholder or generate a summary based on the
-#     directory name. Collect these into a dictionary where keys are section names and values are
-#     their summaries.
 

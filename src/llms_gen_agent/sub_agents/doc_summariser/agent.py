@@ -14,61 +14,6 @@ from llms_gen_agent.tools import adk_file_read_tool, after_file_read_callback
 
 config = get_config()
 
-# --- Dynamic instruction provider for content_summarizer_agent ---
-def content_summarizer_instruction_provider(context: ReadonlyContext) -> str:
-    """ 
-    We have already read each file and stored its contents in session.state["path-of-this-file"].
-    It is easy to get our agent to expand {files} which is stored as a session state key.
-    But it's not easy to get the agent to understand how to retrieve keys using the values of {files}.
-
-    So to solve this problem, we'll create a dynamic prompt where we expand {files} to obtain
-    all the paths. Each path is then sequentially used as the session key to retrieve the content.
-
-    Then we can summarise the content for each file, in one LLM call.
-    """
-    # Get the list of file paths that were discovered
-    files_to_summarize = context.state.get('files', [])
-
-    # Build a string containing all file contents to be included in the prompt
-    all_file_contents_for_prompt = {}
-    for file_path in files_to_summarize:
-        # Retrieve content from state using file_path as key (as stored by file_reader_agent)
-        content = context.state.get(file_path)
-        if content:
-            all_file_contents_for_prompt[file_path] = content
-
-    if not all_file_contents_for_prompt:
-        # Fallback if no file contents are found (shouldn't happen if file_reader_agent works)
-        return "No file contents found in session state to summarize. Please return an empty JSON object: {\"summaries\":{}}."
-
-    # Construct the prompt including all file contents
-    prompt_parts = [
-        """You have access to the following file contents. 
-        Your task is to summarize EACH file's content in three sentences or fewer.
-        Aggregate ALL these individual summaries into a single JSON object.
-        Return this aggregated JSON object.
-
-        --- File Contents ---
-        """
-    ]
-
-    for file_path, content in all_file_contents_for_prompt.items():
-        prompt_parts.append(f"File: {file_path}\n")
-        prompt_parts.append(f"Content:\n{content}\n---\n")
-
-    prompt_parts.append("""\n
-        **Output Format:**
-        The JSON object MUST have a single key 'summaries' which contains a dictionary where 
-        keys are the original file paths and values are their summaries.
-        Example: {"summaries": {"/path/to/file1.md": "Summary of file 1.", "/path/to/file2.md":"Summary of file 2."}}
-
-        IMPORTANT: Your final response MUST contain ONLY this JSON object. 
-        DO NOT include any other text,explanations, or markdown code block delimiters (```json).
-    """)
-
-    logger.debug(f"Dynamic prompt: {prompt_parts}")
-    return "\n".join(prompt_parts)
-
 def strip_json_markdown_callback(
     callback_context: CallbackContext,
     llm_response: LlmResponse
@@ -94,7 +39,7 @@ def strip_json_markdown_callback(
             if cleaned_text != original_text:
                 print(f"--- Callback: Stripped markdown. Cleaned text (first 100 chars): '{cleaned_text[:100]}...'")
                 # Create a new LlmResponse with the cleaned content
-                # Use .copy(deep=True) to ensure you're not modifying the original immutable object directly
+                # Use .model_copy(deep=True) to ensure you're not modifying the original immutable object directly
                 new_content = llm_response.content.model_copy(deep=True)
                 if new_content.parts and isinstance(new_content.parts[0], Part):
                     new_content.parts[0].text = cleaned_text
@@ -135,10 +80,36 @@ file_reader_agent = Agent(
         adk_file_read_tool
     ],
     after_tool_callback=after_file_read_callback, # this stores the contents of each file read into session state
-    # No output_schema or output_key here, as it's just collecting content
+    # No output_schema or output_key here, as it's just collecting content in session state
 )
 
-content_summarizer_agent = Agent(
+content_summariser_prompt = """
+Here are the paths and contents of several files: {files_content}
+
+Note that each file file has a unique path and associated content.
+
+# Phase 1: File Summarisation
+- Your task is to summarize EACH individual file's content in three sentences or fewer.
+- Aggregate ALL these individual summaries into a single JSON object. Return this aggregated JSON object.
+
+# Phase 2: Project Summarisation
+- Now summarise the overall project as no more than two paragraphs.
+- This project summary will be added to the JSON object.
+
+# Output Format
+- The JSON object MUST have a single key 'summaries' which contains a dictionary.
+- The dictionary keys are the original file paths and values are their summaries.
+- The project summary will use the key `project`.
+- Example: 
+  {"summaries": {"/path/to/file1.md": "Summary of file 1.", 
+                 "/path/to/file2.md":"Summary of file 2.",
+                 "project": "Summary of the project."}}
+
+IMPORTANT: Your final response MUST contain ONLY this JSON object. 
+DO NOT include any other text,explanations, or markdown code block delimiters (```json).
+"""
+
+content_summariser_agent = Agent(
     name="content_summarizer_agent",
     description="An agent that summarizes collected file contents and aggregates them.",
     model=Gemini(
@@ -150,7 +121,7 @@ content_summarizer_agent = Agent(
             max_delay=60
         )
     ),
-    instruction=content_summarizer_instruction_provider, # <--- Use the dynamic instruction provider
+    instruction=content_summariser_prompt,
     generate_content_config=GenerateContentConfig(
         temperature=0.6,
         top_p=1,
@@ -166,6 +137,6 @@ document_summariser_agent = SequentialAgent(
     description="A sequential agent that first reads file contents and then summarizes them.",
     sub_agents=[
         file_reader_agent,
-        content_summarizer_agent
+        content_summariser_agent
     ]
 )

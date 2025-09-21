@@ -5,6 +5,7 @@ It uses mocking to isolate the functions from the file system and other
 external dependencies.
 """
 
+import os
 from unittest.mock import MagicMock, mock_open, patch
 
 from llms_gen_agent.tools import (
@@ -68,30 +69,29 @@ def test_discover_files(mock_walk):
 @patch("builtins.open", new_callable=mock_open)
 @patch("os.getcwd", return_value="/fake/cwd")
 @patch("os.makedirs")
-def test_generate_llms_txt(mock_makedirs, mock_getcwd, mock_file):
-    """Tests the generate_llms_txt function to ensure it writes the correct content.
+@patch("os.path.exists", return_value=True) # Simulate .git directory exists
+def test_generate_llms_txt_github_repo(mock_exists, mock_makedirs, mock_getcwd, mock_file):
+    """Tests the generate_llms_txt function for a GitHub-like repository.
 
-    This test mocks the built-in `open` function to intercept the file-writing
-    operation. It then verifies that the `llms.txt` file is written with the
-    expected H1, overview, H2 sections, and formatted markdown links.
+    It verifies that the `llms.txt` file is written with GitHub URLs.
     """
     # Arrange: Set up all the necessary input data for the function.
-    repo_path = "/fake/repo"
+    repo_path = "/fake/owner/repo_name"
     doc_summaries = {
-        "/fake/repo/README.md": "The main README.",
-        "/fake/repo/docs/guide.md": "A helpful guide.",
+        "project": "Placeholder for overview",
+        "/fake/owner/repo_name/README.md": "The main README.",
+        "/fake/owner/repo_name/docs/guide.md": "A helpful guide.",
     }
 
     tool_context = MagicMock()
     tool_context.state = {
-        "dirs": ["/fake/repo", "/fake/repo/docs"],
-        "files": ["/fake/repo/README.md", "/fake/repo/docs/guide.md"],
+        "dirs": ["/fake/owner/repo_name", "/fake/owner/repo_name/docs"],
+        "files": ["/fake/owner/repo_name/README.md", "/fake/owner/repo_name/docs/guide.md"],
+        "doc_summaries": {"summaries": doc_summaries},
     }
-
     # Act: Call the function to generate the llms.txt content.
     result = generate_llms_txt(
         repo_path,
-        doc_summaries,
         tool_context,
     )
 
@@ -100,6 +100,7 @@ def test_generate_llms_txt(mock_makedirs, mock_getcwd, mock_file):
     mock_file.assert_called_once_with(expected_llms_txt_path, "w")
     mock_getcwd.assert_called_once()
     mock_makedirs.assert_called_once_with("/fake/cwd/temp", exist_ok=True)
+    mock_exists.assert_called_once_with(os.path.join(repo_path, ".git"))
 
     # Assert: Get the handle for the mocked file to check what was written.
     handle = mock_file()
@@ -109,13 +110,74 @@ def test_generate_llms_txt(mock_makedirs, mock_getcwd, mock_file):
 
     # Assert: Define the expected content based on the generate_llms_txt logic.
     expected_content = (
-        "# repo Sitemap\n\n"
+        "# repo_name Sitemap\n\n"
         "Placeholder for overview\n\n"
         "## Home\n\n"
-        "- [README.md](https://github.com/fake/repo/blob/main/README.md): The main README.\n"
+        "- [README.md](https://github.com/owner/repo_name/blob/main/README.md): The main README.\n"
         "\n"  # Newline after the file list for Home section
         "## Docs\n\n"
-        "- [guide.md](https://github.com/fake/repo/blob/main/docs/guide.md): A helpful guide.\n"
+        "- [guide.md](https://github.com/owner/repo_name/blob/main/docs/guide.md): A helpful guide.\n"
+        "\n"  # Newline after the file list for Docs section
+    )
+
+    # Assert: Verify that the captured content matches the expected content.
+    assert written_content == expected_content
+
+    # Assert: Check that the function returns the expected success message.
+    assert result == {"status": "success", "llms_txt_path": expected_llms_txt_path}
+
+
+@patch("builtins.open", new_callable=mock_open)
+@patch("os.getcwd", return_value="/fake/cwd")
+@patch("os.makedirs")
+@patch("os.path.exists", return_value=False) # Simulate .git directory does not exist
+def test_generate_llms_txt_local_repo(mock_exists, mock_makedirs, mock_getcwd, mock_file):
+    """Tests the generate_llms_txt function for a local repository.
+
+    It verifies that the `llms.txt` file is written with relative paths.
+    """
+    # Arrange: Set up all the necessary input data for the function.
+    repo_path = "/fake/local_repo"
+    doc_summaries = {
+        "project": "Placeholder for overview",
+        "/fake/local_repo/README.md": "The main README.",
+        "/fake/local_repo/docs/guide.md": "A helpful guide.",
+    }
+
+    tool_context = MagicMock()
+    tool_context.state = {
+        "dirs": ["/fake/local_repo", "/fake/local_repo/docs"],
+        "files": ["/fake/local_repo/README.md", "/fake/local_repo/docs/guide.md"],
+        "doc_summaries": {"summaries": doc_summaries},
+    }
+    # Act: Call the function to generate the llms.txt content.
+    result = generate_llms_txt(
+        repo_path,
+        tool_context,
+    )
+
+    # Assert: Check that the llms.txt file was opened in write mode.
+    expected_llms_txt_path = "/fake/cwd/temp/llms.txt"
+    mock_file.assert_called_once_with(expected_llms_txt_path, "w")
+    mock_getcwd.assert_called_once()
+    mock_makedirs.assert_called_once_with("/fake/cwd/temp", exist_ok=True)
+    mock_exists.assert_called_once_with(os.path.join(repo_path, ".git"))
+
+    # Assert: Get the handle for the mocked file to check what was written.
+    handle = mock_file()
+
+    # Assert: Capture all calls to write and join them to form the complete written content.
+    written_content = "".join([call.args[0] for call in handle.write.call_args_list])
+
+    # Assert: Define the expected content based on the generate_llms_txt logic.
+    expected_content = (
+        "# local_repo Sitemap\n\n"
+        "Placeholder for overview\n\n"
+        "## Home\n\n"
+        "- [README.md](README.md): The main README.\n"
+        "\n"  # Newline after the file list for Home section
+        "## Docs\n\n"
+        "- [guide.md](docs/guide.md): A helpful guide.\n"
         "\n"  # Newline after the file list for Docs section
     )
 

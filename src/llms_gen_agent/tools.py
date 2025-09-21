@@ -100,17 +100,18 @@ def after_file_read_callback(
     else:
         logger.warning("tool_response is a {type(tool_response)}. Expected str or dict.")
 
-    tool_context.state[args["file_path"]] = content
+    if "files_content" not in tool_context.state:
+        tool_context.state["files_content"] = {}
+    tool_context.state["files_content"][args["file_path"]] = content
     return tool_response    
 
 # def generate_llms_txt(repo_path: str, doc_summaries_json: AggregatedSummariesOutput, tool_context: ToolContext) -> dict:
-def generate_llms_txt(repo_path: str, doc_summaries: dict[str, str], tool_context: ToolContext) -> dict:
+def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
     """
     Generates a llms.txt file for the repository in Markdown format.
 
     Args:
         repo_path: The absolute path to the repository to scan.
-        doc_summaries_json: An instance of AggregatedSummariesOutput containing the document summaries.        
 
     Other required data will be retrieved from session state.
 
@@ -120,25 +121,30 @@ def generate_llms_txt(repo_path: str, doc_summaries: dict[str, str], tool_contex
     logger.debug("Entering generate_llms_txt for repo_path: %s", repo_path)
     dirs = tool_context.state.get("dirs", [])
     files = tool_context.state.get("files", [])
-    # doc_summaries = {item.file_path: item.summary for item in doc_summaries_json.summaries}
+    doc_summaries_full = tool_context.state.get("doc_summaries", {})
+    doc_summaries = doc_summaries_full.get("summaries", {}) # remember, it has one top-level key called `summaries`
+    project_summary = doc_summaries.pop("project", None)
 
     logger.debug("We have %d directories.", len(dirs))
     logger.debug("We have %d files", len(files))
     logger.debug("We have %d sumamries", len(doc_summaries))
-    # logger.debug("Section summaries count: %d", len(section_summaries))
+    logger.debug("Project summary: %s", project_summary)
 
-    # Create variable llms_txt_path - It should be the current location where the user is, in a folder called temp.
-    # Create the temp if it doesn't exit.
     temp_dir = os.path.join(os.getcwd(), "temp")
     os.makedirs(temp_dir, exist_ok=True)
     llms_txt_path = os.path.join(temp_dir, "llms.txt") 
 
     owner, repo_name = _get_repo_details(repo_path)
-    base_url = f"https://github.com/{owner}/{repo_name}/blob/main/" if owner else ""
+    git_dir = os.path.join(repo_path, ".git")
+
+    if os.path.exists(git_dir) and owner and repo_name:
+        base_url = f"https://github.com/{owner}/{repo_name}/blob/main/"
+    else:
+        base_url = "" # Use relative paths if not a GitHub repo or .git not found
 
     with open(llms_txt_path, "w") as f:
         f.write(f"# {repo_name} Sitemap\n\n")
-        f.write("Placeholder for overview\n\n") # TODO: add real overview
+        f.write(f"{project_summary}\n\n" if project_summary else "No project summary found\n\n")
 
         for directory in dirs:
             section_name = (
@@ -151,12 +157,14 @@ def generate_llms_txt(repo_path: str, doc_summaries: dict[str, str], tool_contex
                 section_name = "Home"
 
             f.write(f"## {section_name}\n\n")
-            # f.write(f"{section_summaries.get(section_name, f'An overview of the {section_name} section.')}\n\n")
 
-            section_summaries = [(file_path, summary) for file_path, summary in doc_summaries.items() 
-                                                       if os.path.dirname(file_path) == directory]
+            section_files_with_summaries = [
+                (file_path, summary) 
+                for file_path, summary in doc_summaries.items() 
+                if os.path.dirname(file_path) == directory
+            ]
 
-            for file_path, summary in sorted(section_summaries):
+            for file_path, summary in sorted(section_files_with_summaries):
                 link_text = os.path.basename(file_path)
                 relative_path = os.path.relpath(file_path, repo_path)
                 f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
