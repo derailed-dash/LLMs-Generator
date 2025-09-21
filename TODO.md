@@ -6,10 +6,11 @@
 - [x] Add sequential agent such that all files are read first, and then all content is summarised second.
 - [x] Add callback to capture the output of read files and store in session state.
 - [x] Complete project summarisation step.
-- [ ] Fewer sections, controlled by folder depth.
+- [x] Fewer sections, controlled by folder depth.
 - [x] Complete final `llms.txt` file creation.
-- [ ] Remove temporary restriction on number of docs summarised.
 - [ ] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
+- [ ] Work out how to handle large repos without 429 errors.
+- [ ] Remove temporary restriction on number of docs summarised.
 - [ ] Make repo public.
 - [ ] Write blog.
 - [ ] Increase test coverage by adding unit tests for the agents and other utility functions.

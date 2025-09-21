@@ -94,7 +94,7 @@ Note that each file file has a unique path and associated content.
 - Aggregate ALL these individual summaries into a single JSON object. Return this aggregated JSON object.
 
 # Phase 2: Project Summarisation
-- Now summarise the overall project as no more than two paragraphs. 
+- Now summarise the overall project in no more than three paragraphs. 
   Focus on the content that is helpful for understanding the purpose of the project and the core components.
 - This project summary will be added to the JSON object.
 

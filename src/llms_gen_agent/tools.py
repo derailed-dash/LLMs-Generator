@@ -105,17 +105,128 @@ def after_file_read_callback(
     tool_context.state["files_content"][args["file_path"]] = content
     return tool_response    
 
-def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
-    """
-    Generates a llms.txt file for the repository in Markdown format.
+def _get_llms_txt_base_url(repo_path: str) -> str:
+    """Determines the base URL (GitHub or empty for local) for links."""
+    owner, repo_name = _get_repo_details(repo_path)
+    git_dir = os.path.join(repo_path, ".git")
+
+    if os.path.exists(git_dir) and owner and repo_name:
+        return f"https://github.com/{owner}/{repo_name}/blob/main/"
+    else:
+        return "" # Use relative paths if not a GitHub repo or .git not found
+
+def _filter_and_sort_section_dirs(all_dirs: list[str], repo_path: str, max_depth: int) -> list[str]:
+    """Filters and sorts directories to only include those that should become sections."""
+    section_dirs = []
+    for directory in sorted(all_dirs):
+        relative_path = os.path.relpath(directory, repo_path)
+        if relative_path == ".":
+            depth = 0
+        else:
+            depth = relative_path.count(os.sep) + 1
+
+        if depth <= max_depth:
+            section_dirs.append(directory)
+    return section_dirs
+
+def _map_files_to_effective_sections(all_files: list[str], repo_path: str, max_depth: int) -> dict[str, str]:
+    """Maps each file to its effective section directory based on a maximum depth.
+
+    This function determines which directory a file should be associated with
+    for the purpose of generating sections in the llms.txt file. If a file's
+    parent directory is deeper than `max_depth`, the file is mapped to its
+    closest ancestor directory that is within the `max_depth` limit.
+    Files directly in the root are mapped to the root directory itself.
 
     Args:
-        repo_path: The absolute path to the repository to scan.
-
-    Other required data will be retrieved from session state.
+        all_files: A list of absolute paths to all discovered files in the repository.
+        repo_path: The absolute path to the root of the repository.
+        max_depth: The maximum section depth allowed (e.g., 2 for two levels deep
+                   from the root, excluding the root itself).
 
     Returns:
-        A dictionary with "status" (success/failure) and the path to the generated file.
+        A dictionary where keys are absolute file paths and values are the
+        absolute paths of their effective section directories.
+    """
+    file_to_effective_section_dir = {}
+    for file_path in all_files:
+        relative_file_path = os.path.relpath(file_path, repo_path)
+        relative_dir_path = os.path.dirname(relative_file_path)
+
+        if relative_dir_path == "": # File is directly in the root
+            effective_section_relative_path = "."
+        else:
+            path_parts = relative_dir_path.split(os.sep)
+            effective_section_relative_parts = []
+            for i, part in enumerate(path_parts):
+                if i < max_depth:
+                    effective_section_relative_parts.append(part)
+                else:
+                    break
+            effective_section_relative_path = os.path.join(*effective_section_relative_parts)
+
+        if effective_section_relative_path == ".":
+            effective_section_absolute_path = repo_path
+        else:
+            effective_section_absolute_path = os.path.join(repo_path, effective_section_relative_path)
+            
+        file_to_effective_section_dir[file_path] = effective_section_absolute_path
+    return file_to_effective_section_dir
+
+def _write_llms_txt_section(f, directory: str, 
+                            repo_path: str, 
+                            files: list[str], 
+                            file_to_effective_section_dir: dict[str, str], 
+                            doc_summaries: dict[str, str], 
+                            base_url: str):
+    """Writes a single section (header and file list) to the llms.txt file."""
+    section_name = (
+        os.path.relpath(directory, repo_path)
+        .replace("/", " ")
+        .strip()
+        .title()
+    )
+    if section_name == ".":
+        section_name = "Home"
+
+    f.write(f"## {section_name}\n\n")
+
+    section_files_to_write = []
+    for file_path in files:
+        if file_to_effective_section_dir.get(file_path) == directory:
+            summary = doc_summaries.get(file_path, "No summary")
+            section_files_to_write.append((file_path, summary))
+
+    logger.debug("Section: %s, Files: %s", section_name, section_files_to_write)
+
+    for file_path, summary in sorted(section_files_to_write):
+        link_text = os.path.basename(file_path)
+        relative_path = os.path.relpath(file_path, repo_path)
+        f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
+    f.write("\n")
+
+def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
+    """Generates a comprehensive llms.txt sitemap file for a given repository.
+
+    This function orchestrates the creation of an AI/LLM-friendly Markdown file
+    (`llms.txt`) that provides a structured overview of the repository's
+    contents. It includes a project summary, and organizes files into sections
+    based on their directory structure, with a configurable maximum section depth.
+
+    For each file, it generates a Markdown link with its summary. If a summary
+    is not available, "No summary" is used as a placeholder. Links are
+    generated as GitHub URLs if the repository is detected as a Git repository,
+    otherwise, relative local paths are used.
+
+    Args:
+        repo_path: The absolute path to the root of the repository to scan.
+
+    Other required data is retrieved from tool_context.
+
+    Returns:
+        A dictionary with:
+        - "status": "success" if the file was generated successfully.
+        - "llms_txt_path": The absolute path to the generated llms.txt file.
     """
     logger.debug("Entering generate_llms_txt for repo_path: %s", repo_path)
     dirs = tool_context.state.get("dirs", [])
@@ -133,88 +244,21 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
     os.makedirs(temp_dir, exist_ok=True)
     llms_txt_path = os.path.join(temp_dir, "llms.txt") 
 
-    owner, repo_name = _get_repo_details(repo_path)
-    git_dir = os.path.join(repo_path, ".git")
+    MAX_SECTION_DEPTH = 2 # Max two levels deep, not including the root
+    repo_name = _get_repo_details(repo_path)[1]
+    base_url = _get_llms_txt_base_url(repo_path)
 
-    if os.path.exists(git_dir) and owner and repo_name:
-        base_url = f"https://github.com/{owner}/{repo_name}/blob/main/"
-    else:
-        base_url = "" # Use relative paths if not a GitHub repo or .git not found
-
-    max_section_depth = 2 # Max two levels deep, not including the root
-
-    # Filter and prepare section_dirs based on max_section_depth
-    section_dirs = []
-    for directory in sorted(dirs):
-        relative_path = os.path.relpath(directory, repo_path)
-        if relative_path == ".":
-            depth = 0
-        else:
-            depth = relative_path.count(os.sep) + 1
-
-        if depth <= max_section_depth:
-            section_dirs.append(directory)
-
-    # Create a mapping from each file to its effective section directory
-    file_to_effective_section_dir = {}
-    for file_path in files:
-        relative_file_path = os.path.relpath(file_path, repo_path)
-        
-        relative_dir_path = os.path.dirname(relative_file_path)
-        
-        if relative_dir_path == "": # File is directly in the root
-            effective_section_relative_path = "."
-        else:
-            path_parts = relative_dir_path.split(os.sep)
-            
-            effective_section_relative_parts = []
-            for i, part in enumerate(path_parts):
-                if i < max_section_depth:
-                    effective_section_relative_parts.append(part)
-                else:
-                    break
-            
-            effective_section_relative_path = os.path.join(*effective_section_relative_parts)
-
-        # Special handling for the root directory's absolute path
-        if effective_section_relative_path == ".":
-            effective_section_absolute_path = repo_path
-        else:
-            effective_section_absolute_path = os.path.join(repo_path, effective_section_relative_path)
-            
-        file_to_effective_section_dir[file_path] = effective_section_absolute_path
+    section_dirs = _filter_and_sort_section_dirs(dirs, repo_path, MAX_SECTION_DEPTH)
+    file_to_effective_section_dir = _map_files_to_effective_sections(files, repo_path, MAX_SECTION_DEPTH)
 
     with open(llms_txt_path, "w") as f:
         f.write(f"# {repo_name} Sitemap\n\n")
         f.write(f"{project_summary}\n\n" if project_summary else "No project summary found\n\n")
 
         for directory in section_dirs:
-            section_name = (
-                os.path.relpath(directory, repo_path)
-                .replace("/", " ")
-                .strip()
-                .title()
-            )
-            if section_name == ".":
-                section_name = "Home"
-
-            f.write(f"## {section_name}\n\n")
-
-            # Get list of tuples for this section
-            section_files_to_write = []
-            for file_path in files: # Iterate through all discovered files
-                if file_to_effective_section_dir.get(file_path) == directory:
-                    summary = doc_summaries.get(file_path, "No summary")
-                    section_files_to_write.append((file_path, summary))
-
-            logger.debug("Section: %s, Files: %s", section_name, section_files_to_write)
-
-            for file_path, summary in sorted(section_files_to_write):
-                link_text = os.path.basename(file_path)
-                relative_path = os.path.relpath(file_path, repo_path)
-                f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
-            f.write("\n")
+            _write_llms_txt_section(f, directory, repo_path, files, file_to_effective_section_dir, doc_summaries, base_url)
 
     logger.debug("Exiting generate_llms_txt. llms.txt generated at %s", llms_txt_path)
     tool_context.state["llms_txt_path"] = llms_txt_path
     return {"status": "success", "llms_txt_path": llms_txt_path}
+
