@@ -34,7 +34,7 @@ def strip_json_markdown_callback(
         # Assuming the response is text in the first part
         if llm_response.content.parts[0].text:
             original_text = llm_response.content.parts[0].text
-            print(f"--- Callback: Original LLM response text (first 100 chars): '{original_text[:100]}...'")
+            logger.debug(f"--- Callback: Original LLM response text (first 100 chars): '{original_text[:100]}...'")
 
             # Regex to find and remove ```json and ```
             # re.DOTALL allows . to match newlines, \s* matches any whitespace (including newlines)
@@ -43,7 +43,7 @@ def strip_json_markdown_callback(
             cleaned_text = cleaned_text.strip() # Remove any leading/trailing whitespace
 
             if cleaned_text != original_text:
-                print(f"--- Callback: Stripped markdown. Cleaned text (first 100 chars): '{cleaned_text[:100]}...'")
+                logger.debug(f"--- Callback: Stripped markdown. Cleaned text (first 100 chars): '{cleaned_text[:100]}...'")
                 # Create a new LlmResponse with the cleaned content
                 # Use .model_copy(deep=True) to ensure you're not modifying the original immutable object directly
                 new_content = llm_response.content.model_copy(deep=True)
@@ -51,13 +51,24 @@ def strip_json_markdown_callback(
                     new_content.parts[0].text = cleaned_text
                     return LlmResponse(content=new_content)
                 else:
-                    print("--- Callback: Error: new_content.parts[0] is not a valid Part object after copy. ---")
+                    logger.debug("--- Callback: Error: new_content.parts[0] is not a valid Part object after copy. ---")
                     return llm_response
             else:
-                print("--- Callback: No markdown delimiters found or text unchanged. ---")
+                pass # Nothing to change
 
-    print("--- Callback: Returning original LLM response. ---")
     return llm_response # Return the original response if no changes or not applicable
+
+file_reader_agent_prompt="""You have a list of files: {files}."""
+if config.max_files_to_process > 0:
+    file_reader_agent_prompt += f"""You must only process the first {config.max_files_to_process} files."""
+file_reader_agent_prompt += """For EACH file path (e.g., '/home/user/project/README.md') in the list, 
+       you MUST read the file content using the `adk_file_read_tool`.
+       Example: `adk_file_read_tool(file_path='/home/user/project/README.md')`
+
+       Once you have read and stored the content these files, respond with a confirmation that all files have been read.
+       Your confirmation message should be a simple text string, like "All files read and content stored."
+       Do NOT include any other text or explanations in your final response for this turn.
+"""
 
 file_reader_agent = Agent(
     name="file_reader_agent",
@@ -66,17 +77,7 @@ file_reader_agent = Agent(
         model=config.model,
         retry_options=retry_options
     ),
-    instruction="""You have a list of files: {files}.
-       PROCESS ONLY THE FIRST FIVE FILES.
-       
-       For EACH file path (e.g., '/home/user/project/README.md') in the list, 
-       you MUST read the file content using the `adk_file_read_tool`.
-       Example: `adk_file_read_tool(file_path='/home/user/project/README.md')`
-
-       Once you have read and stored the content these files, respond with a confirmation that all files have been read.
-       Your confirmation message should be a simple text string, like "All files read and content stored."
-       Do NOT include any other text or explanations in your final response for this turn.
-    """,
+    instruction=file_reader_agent_prompt,
     tools=[
         adk_file_read_tool
     ],
@@ -94,18 +95,19 @@ Note that each file file has a unique path and associated content.
 - Aggregate ALL these individual summaries into a single JSON object. Return this aggregated JSON object.
 
 # Phase 2: Project Summarisation
-- Now summarise the overall project in no more than three paragraphs. 
-  Focus on the content that is helpful for understanding the purpose of the project and the core components.
-- This project summary will be added to the JSON object.
+- After summarizing all the files, you MUST provide an overall project summary, in no more than three paragraphs. 
+- The project summary should be a high-level overview of the repository, based on the content of the files.
+- Focus on the content that is helpful for understanding the purpose of the project and the core components.
+- The project summary MUST be stored in the output with the key 'project'.
 
 # Output Format
 - The JSON object MUST have a single key 'summaries' which contains a dictionary.
 - The dictionary keys are the original file paths and values are their summaries.
-- The project summary will use the key `project`.
+- The project summary will use the key `project`. THIS KEY MUST BE PRESENT.
 - Example: 
-  {"summaries": {"/path/to/file1.md": "Summary of file 1.", 
-                 "/path/to/file2.md":"Summary of file 2.",
-                 "project": "Summary of the project."}}
+  {{"summaries": {{"/path/to/file1.md": "Summary of file 1.", 
+                   "/path/to/file2.md":"Summary of file 2.",
+                   "project": "Summary of the project."}} }}
 
 IMPORTANT: Your final response MUST contain ONLY this JSON object. 
 DO NOT include any other text,explanations, or markdown code block delimiters (```json).

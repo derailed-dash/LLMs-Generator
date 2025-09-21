@@ -8,9 +8,9 @@
 - [x] Complete project summarisation step.
 - [x] Fewer sections, controlled by folder depth.
 - [x] Complete final `llms.txt` file creation.
-- [ ] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
+- [x] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
 - [x] Work out how to handle large repos without 429 errors.
-- [ ] Remove temporary restriction on number of docs summarised.
+- [x] Remove temporary restriction on number of docs summarised.
 - [ ] Make repo public.
 - [ ] Write blog.
 - [ ] Increase test coverage by adding unit tests for the agents and other utility functions.

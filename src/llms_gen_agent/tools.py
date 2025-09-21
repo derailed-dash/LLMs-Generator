@@ -88,10 +88,7 @@ def after_file_read_callback(
     Callback function that runs after `adk_file_read_tool` is executed.
     It stores the content of the read file into the session state using the file path as the key.
     """
-    tool_name = tool.name
-    logger.debug("Entering after_file_read_callback for tool: %s", tool_name)
-    logger.debug(f"Args: {args}")
-    # logger.debug(f"Tool response: {tool_response}")
+    logger.debug(f"Executing after_file_read_callback for: {args}")
 
     if isinstance(tool_response, str):
         content = tool_response # The tool_response itself is the content
@@ -197,7 +194,7 @@ def _write_llms_txt_section(f, directory: str,
             summary = doc_summaries.get(file_path, "No summary")
             section_files_to_write.append((file_path, summary))
 
-    logger.debug("Section: %s, Files: %s", section_name, section_files_to_write)
+    logger.debug(f"Section: {section_name}, Files: {str(section_files_to_write)[:60]}")
 
     for file_path, summary in sorted(section_files_to_write):
         link_text = os.path.basename(file_path)
@@ -205,7 +202,7 @@ def _write_llms_txt_section(f, directory: str,
         f.write(f"- [{link_text}]({base_url}{relative_path}): {summary}\n")
     f.write("\n")
 
-def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
+def generate_llms_txt(repo_path: str, tool_context: ToolContext, output_path: str = "") -> dict:
     """Generates a comprehensive llms.txt sitemap file for a given repository.
 
     This function orchestrates the creation of an AI/LLM-friendly Markdown file
@@ -220,6 +217,9 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
 
     Args:
         repo_path: The absolute path to the root of the repository to scan.
+        output_path: Optional. The absolute path to save the llms.txt file. 
+                     If not provided, it will be saved in a `temp` directory 
+                     in the current working directory.
 
     Other required data is retrieved from tool_context.
 
@@ -238,11 +238,17 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
     logger.debug("We have %d directories.", len(dirs))
     logger.debug("We have %d files", len(files))
     logger.debug("We have %d sumamries", len(doc_summaries))
-    logger.debug("Project summary: %s", project_summary)
+    logger.debug("Project summary: %s", project_summary[:60] if project_summary else "None")
 
-    temp_dir = os.path.join(os.getcwd(), "temp")
-    os.makedirs(temp_dir, exist_ok=True)
-    llms_txt_path = os.path.join(temp_dir, "llms.txt") 
+    if output_path and output_path.strip():
+        llms_txt_path = output_path
+        output_dir = os.path.dirname(output_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+    else:
+        temp_dir = os.path.join(os.getcwd(), "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+        llms_txt_path = os.path.join(temp_dir, "llms.txt")
 
     MAX_SECTION_DEPTH = 2 # Max two levels deep, not including the root
     repo_name = _get_repo_details(repo_path)[1]
@@ -258,7 +264,6 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext) -> dict:
         for directory in section_dirs:
             _write_llms_txt_section(f, directory, repo_path, files, file_to_effective_section_dir, doc_summaries, base_url)
 
-    logger.debug("Exiting generate_llms_txt. llms.txt generated at %s", llms_txt_path)
+    logger.debug("llms.txt generated at %s", llms_txt_path)
     tool_context.state["llms_txt_path"] = llms_txt_path
     return {"status": "success", "llms_txt_path": llms_txt_path}
-

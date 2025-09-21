@@ -18,6 +18,39 @@ Author: Darren Lester
 
 To get started with LLMS-Generator, follow these steps:
 
+### Environment Variables
+
+This project uses a `.env` file to manage environment variables. Before running the application, you need to create a `.env` file in the root of the project.
+
+You can copy the example below and customize it with your own values.
+
+```bash
+# .env
+
+export GOOGLE_CLOUD_STAGING_PROJECT="your-staging-project-id"
+export GOOGLE_CLOUD_PRD_PROJECT="your-prod-project-id"
+
+# These Google Cloud variables are set by the scripts/setup-env.sh script
+# GOOGLE_CLOUD_PROJECT=""
+# GOOGLE_CLOUD_LOCATION="global"
+
+export PYTHONPATH="src"
+
+# Agent variables
+export AGENT_NAME="llms_gen_agent" # The name of the agent
+export MODEL="gemini-2.5-flash" # The model used by the agent
+export GOOGLE_GENAI_USE_VERTEXAI="True" # True to use Vertex AI for auth; else use API key
+export LOG_LEVEL="INFO"
+export MAX_FILES_TO_PROCESS=10 # Set to 0 for no limit
+
+# Exponential backoff parameters for the model API calls
+export BACKOFF_INIT_DELAY=5
+BACKOFF_ATTEMPTS=5
+BACKOFF_MAX_DELAY=60
+BACKOFF_MULTIPLIER=2 # exponential delay growth
+
+```
+
 ### Prerequisites
 
 *   **uv:** Ensure you have `uv` installed for Python package and environment management. If not, you can install it by following the instructions on the [uv website](https://astral.sh/uv/install/).
@@ -32,7 +65,7 @@ To get started with LLMS-Generator, follow these steps:
     cd llms-generator
     ```
 2.  **Set up your environment:**
-    Run the setup script to configure your Google Cloud project and authentication.
+    Run the setup script to configure your Google Cloud project and authentication, and load environment variables from `.env`.
     ```bash
     source scripts/setup-env.sh
     ```
@@ -44,6 +77,25 @@ To get started with LLMS-Generator, follow these steps:
     ```
 
 After completing these steps, your environment will be set up, and all dependencies will be installed, ready for development or running the agent.
+
+## How to Use
+
+Once the dependencies are installed and the environment is set up, you can use the `llms-gen` command-line tool to generate the `llms.txt` file.
+
+### Command
+
+```bash
+llms-gen --repo-path /path/to/your/repo [OPTIONS]
+```
+
+### Arguments
+
+*   `--repo-path` / `-r`: (Required) The absolute path to the repository to generate the `llms.txt` file for.
+
+### Options
+
+*   `--output-path` / `-o`: The absolute path to save the `llms.txt` file. If not specified, it will be saved in a `temp` directory in the current working directory.
+*   `--log-level` / `-l`: Set the log level for the application (e.g., `DEBUG`, `INFO`, `WARNING`, `ERROR`). This will override any `LOG_LEVEL` environment variable.
 
 ## Repo Overview
 

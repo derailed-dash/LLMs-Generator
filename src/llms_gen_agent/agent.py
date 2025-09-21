@@ -31,7 +31,7 @@ generate_llms_coordinator = Agent(
     instruction="""You are an expert in analyzing code repositories and generating `llms.txt` files.
 Your goal is to create a comprehensive and accurate `llms.txt` file that will help other LLMs
 understand the repository. When the user asks you to generate the file, you should ask for the
-absolute path to the repository/folder.
+absolute path to the repository/folder, and optionally an output path.
 
 Here's the detailed process you should follow:
 1.  **Discover Files**: Use the `discover_files` tool with the provided `repo_path` to get a list of all
@@ -49,7 +49,8 @@ Here's the detailed process you should follow:
     This contains all the files originally discovered, with each mapped to a summary.
     If so, continue. If not, you should provide an appropriate response to the user and STOP HERE.
 5.  **Generate `llms.txt**: Call the `generate_llms_txt` tool.
-    Provide `repo_path` and `doc_summaries` as arguments.
+    Provide `repo_path` as an argument. If the user provided an output path, 
+    provide it as the `output_path` argument.
     The tool will determine other required values from session state.
 6.  **Response**
     Finally, respond to the user confirming whether the `llms.txt` creation was successful.
