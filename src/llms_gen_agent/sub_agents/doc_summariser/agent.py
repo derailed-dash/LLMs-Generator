@@ -3,7 +3,6 @@ import re
 
 from google.adk.agents import Agent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
-from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_response import LlmResponse
 from google.genai.types import GenerateContentConfig, HttpRetryOptions, Part
@@ -13,6 +12,13 @@ from llms_gen_agent.schema_types import DocumentSummariesOutput
 from llms_gen_agent.tools import adk_file_read_tool, after_file_read_callback
 
 config = get_config()
+
+retry_options=HttpRetryOptions(
+            initial_delay=config.backoff_init_delay,
+            attempts=config.backoff_attempts,
+            exp_base=config.backoff_multiplier,
+            max_delay=config.backoff_max_delay
+)
 
 def strip_json_markdown_callback(
     callback_context: CallbackContext,
@@ -58,12 +64,7 @@ file_reader_agent = Agent(
     description="An agent that reads the content of multiple files and stores them in session state.",
     model=Gemini(
         model=config.model,
-        retry_options=HttpRetryOptions(
-            initial_delay=2,
-            attempts=5,
-            exp_base=2,
-            max_delay=60
-        )
+        retry_options=retry_options
     ),
     instruction="""You have a list of files: {files}.
        PROCESS ONLY THE FIRST FIVE FILES.
@@ -93,7 +94,8 @@ Note that each file file has a unique path and associated content.
 - Aggregate ALL these individual summaries into a single JSON object. Return this aggregated JSON object.
 
 # Phase 2: Project Summarisation
-- Now summarise the overall project as no more than two paragraphs.
+- Now summarise the overall project as no more than two paragraphs. 
+  Focus on the content that is helpful for understanding the purpose of the project and the core components.
 - This project summary will be added to the JSON object.
 
 # Output Format
@@ -114,12 +116,7 @@ content_summariser_agent = Agent(
     description="An agent that summarizes collected file contents and aggregates them.",
     model=Gemini(
         model=config.model,
-        retry_options=HttpRetryOptions(
-            initial_delay=2,
-            attempts=5,
-            exp_base=2,
-            max_delay=60
-        )
+        retry_options=retry_options
     ),
     instruction=content_summariser_prompt,
     generate_content_config=GenerateContentConfig(
@@ -128,7 +125,7 @@ content_summariser_agent = Agent(
         max_output_tokens=32000
     ),
     output_schema=DocumentSummariesOutput, # This is the final output schema
-    output_key="doc_summaries",
+    output_key="doc_summaries", # json with top level called 'summaries'
     after_model_callback=strip_json_markdown_callback # Apply callback here
 )
 

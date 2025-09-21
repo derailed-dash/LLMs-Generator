@@ -81,12 +81,25 @@ def test_generate_llms_txt_github_repo(mock_exists, mock_makedirs, mock_getcwd, 
         "project": "Placeholder for overview",
         "/fake/owner/repo_name/README.md": "The main README.",
         "/fake/owner/repo_name/docs/guide.md": "A helpful guide.",
+        "/fake/owner/repo_name/docs/api/index.md": "API documentation index.",
+        "/fake/owner/repo_name/docs/api/v1/intro.md": "Introduction to API v1.",
     }
 
     tool_context = MagicMock()
     tool_context.state = {
-        "dirs": ["/fake/owner/repo_name", "/fake/owner/repo_name/docs"],
-        "files": ["/fake/owner/repo_name/README.md", "/fake/owner/repo_name/docs/guide.md"],
+        "dirs": [
+            "/fake/owner/repo_name",
+            "/fake/owner/repo_name/docs",
+            "/fake/owner/repo_name/docs/api",
+            "/fake/owner/repo_name/docs/api/v1",
+        ],
+        "files": [
+            "/fake/owner/repo_name/README.md",
+            "/fake/owner/repo_name/docs/guide.md",
+            "/fake/owner/repo_name/docs/new_file.md", # New file without summary
+            "/fake/owner/repo_name/docs/api/index.md",
+            "/fake/owner/repo_name/docs/api/v1/intro.md",
+        ],
         "doc_summaries": {"summaries": doc_summaries},
     }
     # Act: Call the function to generate the llms.txt content.
@@ -117,7 +130,12 @@ def test_generate_llms_txt_github_repo(mock_exists, mock_makedirs, mock_getcwd, 
         "\n"  # Newline after the file list for Home section
         "## Docs\n\n"
         "- [guide.md](https://github.com/owner/repo_name/blob/main/docs/guide.md): A helpful guide.\n"
+        "- [new_file.md](https://github.com/owner/repo_name/blob/main/docs/new_file.md): No summary\n"
         "\n"  # Newline after the file list for Docs section
+        "## Docs Api\n\n"
+        "- [index.md](https://github.com/owner/repo_name/blob/main/docs/api/index.md): API documentation index.\n"
+        "- [intro.md](https://github.com/owner/repo_name/blob/main/docs/api/v1/intro.md): Introduction to API v1.\n"
+        "\n"
     )
 
     # Assert: Verify that the captured content matches the expected content.
@@ -142,12 +160,25 @@ def test_generate_llms_txt_local_repo(mock_exists, mock_makedirs, mock_getcwd, m
         "project": "Placeholder for overview",
         "/fake/local_repo/README.md": "The main README.",
         "/fake/local_repo/docs/guide.md": "A helpful guide.",
+        "/fake/local_repo/docs/api/index.md": "API documentation index.",
+        "/fake/local_repo/docs/api/v1/intro.md": "Introduction to API v1.",
     }
 
     tool_context = MagicMock()
     tool_context.state = {
-        "dirs": ["/fake/local_repo", "/fake/local_repo/docs"],
-        "files": ["/fake/local_repo/README.md", "/fake/local_repo/docs/guide.md"],
+        "dirs": [
+            "/fake/local_repo",
+            "/fake/local_repo/docs",
+            "/fake/local_repo/docs/api",
+            "/fake/local_repo/docs/api/v1",
+        ],
+        "files": [
+            "/fake/local_repo/README.md",
+            "/fake/local_repo/docs/guide.md",
+            "/fake/local_repo/docs/new_file.md", # New file without summary
+            "/fake/local_repo/docs/api/index.md",
+            "/fake/local_repo/docs/api/v1/intro.md",
+        ],
         "doc_summaries": {"summaries": doc_summaries},
     }
     # Act: Call the function to generate the llms.txt content.
@@ -178,7 +209,12 @@ def test_generate_llms_txt_local_repo(mock_exists, mock_makedirs, mock_getcwd, m
         "\n"  # Newline after the file list for Home section
         "## Docs\n\n"
         "- [guide.md](docs/guide.md): A helpful guide.\n"
+        "- [new_file.md](docs/new_file.md): No summary\n"
         "\n"  # Newline after the file list for Docs section
+        "## Docs Api\n\n"
+        "- [index.md](docs/api/index.md): API documentation index.\n"
+        "- [intro.md](docs/api/v1/intro.md): Introduction to API v1.\n"
+        "\n"
     )
 
     # Assert: Verify that the captured content matches the expected content.

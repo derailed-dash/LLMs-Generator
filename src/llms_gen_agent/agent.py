@@ -22,10 +22,10 @@ generate_llms_coordinator = Agent(
     model=Gemini(
         model=config.model,
         retry_options=HttpRetryOptions(
-            initial_delay=2,
-            attempts=5,
-            exp_base=2,
-            max_delay=60
+            initial_delay=config.backoff_init_delay,
+            attempts=config.backoff_attempts,
+            exp_base=config.backoff_multiplier,
+            max_delay=config.backoff_max_delay
         )
     ),        
     instruction="""You are an expert in analyzing code repositories and generating `llms.txt` files.
