@@ -1,4 +1,4 @@
-"""Includes all shared libraries for the agent."""
+"""Includes the agent and its shared libraries."""
 
 from .agent import root_agent
 

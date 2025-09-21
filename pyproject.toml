@@ -18,6 +18,8 @@ dependencies = [
     "uvicorn~=0.34.3", # means >= 0.34.3 but < 0.35
     "pyyaml",
     "tenacity",
+    "typer",
+    "rich",
 ]
 
 requires-python = ">=3.12,<3.13"
@@ -101,4 +103,7 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["src/tests"] # This helps pytest to find tests, making collection faster
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/llms_gen_agent", "src/common_utils"]
+packages = ["src/llms_gen_agent", "src/common_utils", "src/client_fe"]
+
+[project.scripts]
+llms-gen = "client_fe.cli:app"

@@ -9,7 +9,7 @@
 - [x] Fewer sections, controlled by folder depth.
 - [x] Complete final `llms.txt` file creation.
 - [ ] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
-- [ ] Work out how to handle large repos without 429 errors.
+- [x] Work out how to handle large repos without 429 errors.
 - [ ] Remove temporary restriction on number of docs summarised.
 - [ ] Make repo public.
 - [ ] Write blog.
