@@ -36,13 +36,12 @@ def strip_json_markdown_callback(
             original_text = llm_response.content.parts[0].text
             logger.debug(f"--- Callback: Original LLM response text (first 100 chars): '{original_text[:100]}...'")
 
-            # Regex to find and remove ```json and ```
+            # Regex to find and remove ```<lang> and ```
             # re.DOTALL allows . to match newlines, \s* matches any whitespace (including newlines)
             # (.*?) is a non-greedy match for the content inside the code block
-            cleaned_text = re.sub(r"```json\s*(.*?)\s*```", r"\\1", original_text, flags=re.DOTALL)
-            cleaned_text = cleaned_text.strip() # Remove any leading/trailing whitespace
-
-            if cleaned_text != original_text:
+            match = re.search(r"```(?:\w*\s*)?(.*?)\s*```", original_text, flags=re.DOTALL)
+            if match:
+                cleaned_text = match.group(1).strip()
                 logger.debug(f"--- Callback: Stripped markdown. Cleaned text (first 100 chars): '{cleaned_text[:100]}...'")
                 # Create a new LlmResponse with the cleaned content
                 # Use .model_copy(deep=True) to ensure you're not modifying the original immutable object directly
@@ -54,7 +53,8 @@ def strip_json_markdown_callback(
                     logger.debug("--- Callback: Error: new_content.parts[0] is not a valid Part object after copy. ---")
                     return llm_response
             else:
-                pass # Nothing to change
+                logger.debug("--- Callback: No markdown code block found. Returning original response. ---")
+                return llm_response
 
     return llm_response # Return the original response if no changes or not applicable
 
@@ -102,7 +102,10 @@ You will do this work in two phase.
 - After summarizing all the files, you MUST also provide an overall project summary, in no more than three paragraphs. 
 - The project summary should be a high-level overview of the repository/folder, based on the content of the files.
 - Focus on the content that is helpful for understanding the purpose of the project and the core components.
-- The project summary MUST be stored in the same output JSON object with the key 'project'.
+- The project summary MUST be stored in the same output JSON object with the key 'project'. 
+  This is CRITICAL for the overall understanding of the repository.
+- Note: The number of files processed is limited by the 'max_files_to_process' setting.
+  But you should ALWAYS create the project summary.
 
 # Output Format
 - The JSON object MUST have a single top-level key called 'summaries', which contains a dictionary.
@@ -116,7 +119,7 @@ You will do this work in two phase.
                    "project":"Summary of the project."}} }}
 
 IMPORTANT: Your final response MUST contain ONLY this JSON object. 
-DO NOT include any other text,explanations, or markdown code block delimiters (```json).
+DO NOT include any other text, explanations, or markdown code block delimiters.
 
 Now I will provide you with the contents of multiple files. 
 Note that each file has a unique path and associated content.
@@ -138,9 +141,9 @@ content_summariser_agent = Agent(
     ),
     instruction=content_summariser_prompt,
     generate_content_config=GenerateContentConfig(
-        temperature=0.6,
+        temperature=0.5,
         top_p=1,
-        max_output_tokens=32000
+        max_output_tokens=64000
     ),
     output_schema=DocumentSummariesOutput, # This is the final output schema
     output_key="doc_summaries", # json with top level called 'summaries'

@@ -62,9 +62,9 @@ Here's the detailed process you should follow:
         AgentTool(agent=document_summariser_agent)
     ],
     generate_content_config=GenerateContentConfig(
-        temperature=0.2,
+        temperature=0.1,
         top_p=1,
-        max_output_tokens=32768
+        max_output_tokens=60000
     )
 )
 

@@ -102,7 +102,7 @@ def after_file_read_callback(
     if "files_content" not in tool_context.state:
         tool_context.state["files_content"] = {}
     
-    logger.debug(f"Adding content: {content[:100]}...")
+    logger.debug(f"Adding content: {content[:80]}...")
     tool_context.state["files_content"][file_path] = content
     return tool_response    
 
@@ -116,38 +116,23 @@ def _get_llms_txt_base_url(repo_path: str) -> str:
     else:
         return "" # Use relative paths if not a GitHub repo or .git not found
 
-def _filter_and_sort_section_dirs(all_dirs: list[str], repo_path: str, max_depth: int) -> list[str]:
-    """Filters and sorts directories to only include those that should become sections."""
-    section_dirs = []
-    for directory in sorted(all_dirs):
-        relative_path = os.path.relpath(directory, repo_path)
-        if relative_path == ".":
-            depth = 0
-        else:
-            depth = relative_path.count(os.sep) + 1
-
-        if depth <= max_depth:
-            section_dirs.append(directory)
-    return section_dirs
 
 def _map_files_to_effective_sections(all_files: list[str], repo_path: str, max_depth: int) -> dict[str, str]:
     """Maps each file to its effective section directory based on a maximum depth.
 
-    This function determines which directory a file should be associated with
-    for the purpose of generating sections in the llms.txt file. If a file's
-    parent directory is deeper than `max_depth`, the file is mapped to its
-    closest ancestor directory that is within the `max_depth` limit.
+    This function determines which directory a file should be associated with for the purpose of 
+    generating sections in the llms.txt file. If a file's parent directory is deeper than `max_depth`, 
+    the file is mapped to its closest ancestor directory that is within the `max_depth` limit.
     Files directly in the root are mapped to the root directory itself.
 
     Args:
         all_files: A list of absolute paths to all discovered files in the repository.
         repo_path: The absolute path to the root of the repository.
-        max_depth: The maximum section depth allowed (e.g., 2 for two levels deep
-                   from the root, excluding the root itself).
+        max_depth: The maximum section depth allowed (e.g., 2 for two levels deep from the root, excluding the root itself).
 
     Returns:
-        A dictionary where keys are absolute file paths and values are the
-        absolute paths of their effective section directories.
+        A dictionary where keys are absolute file paths and values are the absolute paths 
+        of their effective section directories.
     """
     file_to_effective_section_dir = {}
     for file_path in all_files:
@@ -181,6 +166,7 @@ def _write_llms_txt_section(f, directory: str,
                             doc_summaries: dict[str, str], 
                             base_url: str):
     """Writes a single section (header and file list) to the llms.txt file."""
+    
     section_name = (
         os.path.relpath(directory, repo_path)
         .replace("/", " ")
@@ -198,7 +184,7 @@ def _write_llms_txt_section(f, directory: str,
             summary = doc_summaries.get(file_path, "No summary")
             section_files_to_write.append((file_path, summary))
 
-    logger.debug(f"Section: {section_name}, Files: {str(section_files_to_write)[:75]}")
+    logger.debug(f"Section: {section_name}, Files: {section_files_to_write}")
 
     for file_path, summary in sorted(section_files_to_write):
         link_text = os.path.basename(file_path)
@@ -209,21 +195,18 @@ def _write_llms_txt_section(f, directory: str,
 def generate_llms_txt(repo_path: str, tool_context: ToolContext, output_path: str = "") -> dict:
     """Generates a comprehensive llms.txt sitemap file for a given repository.
 
-    This function orchestrates the creation of an AI/LLM-friendly Markdown file
-    (`llms.txt`) that provides a structured overview of the repository's
-    contents. It includes a project summary, and organizes files into sections
-    based on their directory structure, with a configurable maximum section depth.
+    This function orchestrates the creation of an AI/LLM-friendly Markdown file (`llms.txt`) 
+    that provides a structured overview of the repository's contents. It includes a project summary, 
+    and organizes files into sections based on their directory structure, with a configurable maximum section depth.
 
-    For each file, it generates a Markdown link with its summary. If a summary
-    is not available, "No summary" is used as a placeholder. Links are
-    generated as GitHub URLs if the repository is detected as a Git repository,
-    otherwise, relative local paths are used.
+    For each file, it generates a Markdown link with its summary. If a summary is not available, 
+    "No summary" is used as a placeholder. Links are generated as GitHub URLs if the repository is 
+    detected as a Git repository, otherwise, relative local paths are used.
 
     Args:
         repo_path: The absolute path to the root of the repository to scan.
         output_path: Optional. The absolute path to save the llms.txt file. 
-                     If not provided, it will be saved in a `temp` directory 
-                     in the current working directory.
+                     If not provided, it will be saved in a `temp` directory in the current working directory.
 
     Other required data is retrieved from tool_context.
 
@@ -236,22 +219,23 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext, output_path: st
     dirs = tool_context.state.get("dirs", [])
     files = tool_context.state.get("files", [])
     doc_summaries_full = tool_context.state.get("doc_summaries", {})
-    logger.debug(f"doc_summaries is type: {type(doc_summaries_full)}")
+    logger.debug(f"doc_summaries_full (raw from agent) type: {type(doc_summaries_full)}")
     
     doc_summaries = doc_summaries_full.get("summaries", {}) # remember, it has one top-level key called `summaries`
     project_summary = doc_summaries.pop("project", None)
 
     logger.debug("We have %d directories.", len(dirs))
     logger.debug("We have %d files", len(files))
-    logger.debug("We have %d summaries", len(doc_summaries))
+    logger.debug("We have %d summaries (after popping project): %s", len(doc_summaries), doc_summaries)
     logger.debug("Project summary: %s", project_summary[:100] if project_summary else "None")
 
+    # If an output path has been specified...
     if output_path and output_path.strip():
         llms_txt_path = output_path
         output_dir = os.path.dirname(output_path)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-    else:
+    else: # Use default path - temp in the current working dir
         temp_dir = os.path.join(os.getcwd(), "temp")
         os.makedirs(temp_dir, exist_ok=True)
         llms_txt_path = os.path.join(temp_dir, "llms.txt")
@@ -260,14 +244,16 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext, output_path: st
     repo_name = _get_repo_details(repo_path)[1]
     base_url = _get_llms_txt_base_url(repo_path)
 
-    section_dirs = _filter_and_sort_section_dirs(dirs, repo_path, MAX_SECTION_DEPTH)
     file_to_effective_section_dir = _map_files_to_effective_sections(files, repo_path, MAX_SECTION_DEPTH)
+    
+    # Collect all unique effective section directories
+    effective_section_dirs = sorted(set(file_to_effective_section_dir.values()))
 
     with open(llms_txt_path, "w") as f:
         f.write(f"# {repo_name} Sitemap\n\n")
         f.write(f"{project_summary}\n\n" if project_summary else "No project summary found\n\n")
 
-        for directory in section_dirs:
+        for directory in effective_section_dirs:
             _write_llms_txt_section(f, directory, repo_path, files, file_to_effective_section_dir, doc_summaries, base_url)
 
     logger.debug("llms.txt generated at %s", llms_txt_path)
