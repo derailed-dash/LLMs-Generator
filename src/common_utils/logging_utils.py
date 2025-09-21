@@ -1,9 +1,33 @@
-"""This module provides a shared logging utility for the application."""
+"""
+This module provides a shared logging utility for the application.
+
+It offers a centralized `setup_logger` function that configures and returns a
+standardized logger instance. This ensures consistent logging behavior,
+formatting, and level across the entire application.
+
+To use the logger in any module, import the `setup_logger` function and call it with a name, 
+typically `__name__`, to get a logger instance specific to that module.
+
+Example:
+    ```
+    from common_utils.logging_utils import setup_logger
+
+    logger = setup_logger(__name__)
+    ```
+
+In this application we setup up the logger in `config.py`, and then expose that logger
+to other modules. E.g.
+    ```
+    from llms_gen_agent.config import get_config, logger
+    ```
+"""
 
 import logging
 import os
+from functools import cache
 
 
+@cache # We only one one logger for a given app_name
 def setup_logger(app_name: str) -> logging.Logger:
     # Suppress verbose logging from ADK and GenAI libraries - INFO logging is quite verbose
     logging.getLogger("google_adk").setLevel(logging.ERROR)

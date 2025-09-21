@@ -8,9 +8,9 @@ from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_response import LlmResponse
 from google.genai.types import GenerateContentConfig, HttpRetryOptions, Part
 
-from ...config import get_config, logger
-from ...schema_types import DocumentSummariesOutput
-from ...tools import adk_file_read_tool, after_file_read_callback
+from llms_gen_agent.config import get_config, logger
+from llms_gen_agent.schema_types import DocumentSummariesOutput
+from llms_gen_agent.tools import adk_file_read_tool, after_file_read_callback
 
 config = get_config()
 
@@ -77,7 +77,7 @@ def strip_json_markdown_callback(
     Strips markdown code block delimiters (```json, ```) from the LLM's text response.
     This callback runs after the model generates content but before output_schema validation.
     """
-    print(f"--- Callback: strip_json_markdown_callback running for agent: {callback_context.agent_name} ---")
+    logger.debug("--- Callback: strip_json_markdown_callback running for agent: %s ---", callback_context.agent_name)
 
     if llm_response.content and llm_response.content.parts:
         # Assuming the response is text in the first part
@@ -112,7 +112,7 @@ file_reader_agent = Agent(
     name="file_reader_agent",
     description="An agent that reads the content of multiple files and stores them in session state.",
     model=Gemini(
-        model="config.model",
+        model=config.model,
         retry_options=HttpRetryOptions(
             initial_delay=2,
             attempts=5,
@@ -121,12 +121,13 @@ file_reader_agent = Agent(
         )
     ),
     instruction="""You have a list of files: {files}.
-
+       PROCESS ONLY THE FIRST FIVE FILES.
+       
        For EACH file path (e.g., '/home/user/project/README.md') in the list, 
        you MUST read the file content using the `adk_file_read_tool`.
        Example: `adk_file_read_tool(file_path='/home/user/project/README.md')`
 
-       Once you have read and stored the content for all the files, respond with a confirmation that all files have been read.
+       Once you have read and stored the content these files, respond with a confirmation that all files have been read.
        Your confirmation message should be a simple text string, like "All files read and content stored."
        Do NOT include any other text or explanations in your final response for this turn.
     """,

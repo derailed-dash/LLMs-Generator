@@ -1,4 +1,17 @@
-"""This module provides tools for the LLMS-Generator agent."""
+"""
+This module provides a collection of tools for the LLMS-Generator agent.
+
+The tools are designed to facilitate the discovery of files within a given repository, 
+read their contents, and generate a structured `llms.txt` sitemap file based on the findings.
+
+Key functionalities include:
+- `discover_files`: Scans a repository to find relevant files (e.g., Markdown),
+  excluding common temporary or git-related directories.
+- `generate_llms_txt`: Constructs the `llms.txt` Markdown file, organizing
+  discovered files into sections with summaries.
+- `adk_file_read_tool`: A Langchain-based tool for reading file contents.
+- `after_file_read_callback`: A callback to process and store the content retrieved by the file read tool.
+"""
 
 import os
 from typing import Any

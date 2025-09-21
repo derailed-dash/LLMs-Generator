@@ -3,8 +3,8 @@
 from google.adk import Agent
 from google.genai.types import GenerateContentConfig
 
-from ...config import get_config
-from ...tools import adk_file_read_tool
+from llms_gen_agent.config import get_config
+from llms_gen_agent.tools import adk_file_read_tool, after_file_read_callback
 
 config = get_config()
 
