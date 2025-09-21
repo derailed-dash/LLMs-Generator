@@ -58,8 +58,11 @@ select = [
     "UP", # pyupgrade
     "RUF", # ruff specific rules
 ]
-# ignore line too long, too complex, two blank lines, trailing whitespace 
-ignore = ["C901", "E302", "W291"]
+ignore = [
+    "E302", # expected two blank lines between defs
+    "W291", # trailing whitespace
+    "W293"  # line contains whitespace
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]

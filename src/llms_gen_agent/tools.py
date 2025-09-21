@@ -36,15 +36,19 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
     Returns:
         A dictionary with "status" (success/failure) and "files" (a list of file paths).
     """
-    logger.debug("Entering discover_files with repo_path: %s", repo_path)
+    logger.debug("Entering tool: discover_files with repo_path: %s", repo_path)
+
+    excluded_dirs = {'.git', '.github', 'overrides', '.venv', 'node_modules', '__pycache__', '.pytest_cache'}
+    included_extensions = {'.md'}
+
     directory_map: dict[str, list[str]] = {}
     try:
-        excluded_dirs = {'.git', '.venv', 'node_modules', '__pycache__', '.pytest_cache'}
         for root, subdirs, files in os.walk(repo_path):
+            
+            # Modify subdirs in place so that os.walk() sees changes directly
             subdirs[:] = [d for d in subdirs if d not in excluded_dirs]
             for file in files:
-                # For now, we'll stick with markdown files, but this can be expanded.
-                if file.endswith(".md"):
+                if any(file.endswith(ext) for ext in included_extensions):
                     file_path = os.path.join(root, file)
                     directory = os.path.dirname(file_path)
                     if directory not in directory_map:
@@ -67,6 +71,10 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
 
 def after_file_read_callback(
     tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, tool_response: Any) -> Any | None:
+    """
+    Callback function that runs after `adk_file_read_tool` is executed.
+    It stores the content of the read file into the session state using the file path as the key.
+    """
     tool_name = tool.name
     logger.debug("Entering after_file_read_callback for tool: %s", tool_name)
     logger.debug(f"Args: {args}")

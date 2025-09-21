@@ -5,6 +5,7 @@ __pycache__/
 *$py.class
 **/dist
 /tmp
+**/temp
 /out-tsc
 /bazel-out
 
