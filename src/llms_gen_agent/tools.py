@@ -5,7 +5,7 @@ The tools are designed to facilitate the discovery of files within a given repos
 read their contents, and generate a structured `llms.txt` sitemap file based on the findings.
 
 Key functionalities include:
-- `discover_files`: Scans a repository to find relevant files (e.g., Markdown),
+- `discover_files`: Scans a repository to find relevant files (e.g. markdown and python files),
   excluding common temporary or git-related directories.
 - `generate_llms_txt`: Constructs the `llms.txt` Markdown file, organizing
   discovered files into sections with summaries.
@@ -52,7 +52,7 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
     logger.debug("Entering tool: discover_files with repo_path: %s", repo_path)
 
     excluded_dirs = {'.git', '.github', 'overrides', '.venv', 'node_modules', '__pycache__', '.pytest_cache'}
-    included_extensions = {'.md'}
+    included_extensions = {'.md', '.py'}
 
     directory_map: dict[str, list[str]] = {}
     try:
@@ -88,7 +88,8 @@ def after_file_read_callback(
     Callback function that runs after `adk_file_read_tool` is executed.
     It stores the content of the read file into the session state using the file path as the key.
     """
-    logger.debug(f"Executing after_file_read_callback for: {args}")
+    file_path = args["file_path"]
+    logger.debug(f"Executing after_file_read_callback: {file_path}")
 
     if isinstance(tool_response, str):
         content = tool_response # The tool_response itself is the content
@@ -97,9 +98,12 @@ def after_file_read_callback(
     else:
         logger.warning("tool_response is a {type(tool_response)}. Expected str or dict.")
 
+    # Add new file_contents dict if it doesn't yet exist
     if "files_content" not in tool_context.state:
         tool_context.state["files_content"] = {}
-    tool_context.state["files_content"][args["file_path"]] = content
+    
+    logger.debug(f"Adding content: {content[:100]}...")
+    tool_context.state["files_content"][file_path] = content
     return tool_response    
 
 def _get_llms_txt_base_url(repo_path: str) -> str:
@@ -194,7 +198,7 @@ def _write_llms_txt_section(f, directory: str,
             summary = doc_summaries.get(file_path, "No summary")
             section_files_to_write.append((file_path, summary))
 
-    logger.debug(f"Section: {section_name}, Files: {str(section_files_to_write)[:60]}")
+    logger.debug(f"Section: {section_name}, Files: {str(section_files_to_write)[:75]}")
 
     for file_path, summary in sorted(section_files_to_write):
         link_text = os.path.basename(file_path)
@@ -232,13 +236,15 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext, output_path: st
     dirs = tool_context.state.get("dirs", [])
     files = tool_context.state.get("files", [])
     doc_summaries_full = tool_context.state.get("doc_summaries", {})
+    logger.debug(f"doc_summaries is type: {type(doc_summaries_full)}")
+    
     doc_summaries = doc_summaries_full.get("summaries", {}) # remember, it has one top-level key called `summaries`
     project_summary = doc_summaries.pop("project", None)
 
     logger.debug("We have %d directories.", len(dirs))
     logger.debug("We have %d files", len(files))
-    logger.debug("We have %d sumamries", len(doc_summaries))
-    logger.debug("Project summary: %s", project_summary[:60] if project_summary else "None")
+    logger.debug("We have %d summaries", len(doc_summaries))
+    logger.debug("Project summary: %s", project_summary[:100] if project_summary else "None")
 
     if output_path and output_path.strip():
         llms_txt_path = output_path

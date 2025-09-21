@@ -61,7 +61,7 @@ def strip_json_markdown_callback(
 file_reader_agent_prompt="""You have a list of files: {files}."""
 if config.max_files_to_process > 0:
     file_reader_agent_prompt += f"""You must only process the first {config.max_files_to_process} files."""
-file_reader_agent_prompt += """For EACH file path (e.g., '/home/user/project/README.md') in the list, 
+file_reader_agent_prompt += """For EACH file path (e.g. '/home/user/project/README.md') in the list, 
        you MUST read the file content using the `adk_file_read_tool`.
        Example: `adk_file_read_tool(file_path='/home/user/project/README.md')`
 
@@ -85,32 +85,48 @@ file_reader_agent = Agent(
     # No output_schema or output_key here, as it's just collecting content in session state
 )
 
-content_summariser_prompt = """
-Here are the paths and contents of several files: {files_content}
-
-Note that each file file has a unique path and associated content.
+content_summariser_prompt = """You are an expert summariser. 
+You will summarise the contents of multiple files, and then you will summarise the overall project.
+You will do this work in two phase.
 
 # Phase 1: File Summarisation
 - Your task is to summarize EACH individual file's content in three sentences or fewer.
-- Aggregate ALL these individual summaries into a single JSON object. Return this aggregated JSON object.
+- Do NOT start summaries with text like "This document is about" or "This document provides".
+  Just immediately describe the content. E.g.
+  Rather than this: "This document explains how to configure streaming behavior..."
+  Say this: "Explains how to configure streaming behavior..."
+- If you cannot generate a meaningful summary for a file, use 'No meaningful summary available.' as its summary.
+- Aggregate ALL these individual summaries into a single JSON object.
 
 # Phase 2: Project Summarisation
-- After summarizing all the files, you MUST provide an overall project summary, in no more than three paragraphs. 
-- The project summary should be a high-level overview of the repository, based on the content of the files.
+- After summarizing all the files, you MUST also provide an overall project summary, in no more than three paragraphs. 
+- The project summary should be a high-level overview of the repository/folder, based on the content of the files.
 - Focus on the content that is helpful for understanding the purpose of the project and the core components.
-- The project summary MUST be stored in the output with the key 'project'.
+- The project summary MUST be stored in the same output JSON object with the key 'project'.
 
 # Output Format
-- The JSON object MUST have a single key 'summaries' which contains a dictionary.
-- The dictionary keys are the original file paths and values are their summaries.
-- The project summary will use the key `project`. THIS KEY MUST BE PRESENT.
+- The JSON object MUST have a single top-level key called 'summaries', which contains a dictionary.
+- The dictionary contains all the summaries as key:value pairs.
+- For the file summaries: the dictionary keys are the original file paths and values are their respective summaries.
+- For the project summary: the key is `project`. THIS KEY MUST BE PRESENT. The value is the project summary. 
 - Example: 
-  {{"summaries": {{"/path/to/file1.md": "Summary of file 1.", 
+  {{"summaries": {{"/path/to/file1.md":"Summary of file 1.", 
                    "/path/to/file2.md":"Summary of file 2.",
-                   "project": "Summary of the project."}} }}
+                   "/path/to/file3.py":"Summary of python file."
+                   "project":"Summary of the project."}} }}
 
 IMPORTANT: Your final response MUST contain ONLY this JSON object. 
 DO NOT include any other text,explanations, or markdown code block delimiters (```json).
+
+Now I will provide you with the contents of multiple files. 
+Note that each file has a unique path and associated content.
+
+**FILE CONTENTS START:**
+{files_content}
+---
+**FILE CONTENTS END:**
+
+Now return the JSON object.
 """
 
 content_summariser_agent = Agent(

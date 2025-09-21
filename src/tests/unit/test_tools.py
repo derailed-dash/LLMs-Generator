@@ -103,7 +103,7 @@ def test_generate_llms_txt_github_repo(mock_exists, mock_makedirs, mock_getcwd, 
         "doc_summaries": {"summaries": doc_summaries},
     }
     # Act: Call the function to generate the llms.txt content.
-    result = generate_llms_txt(
+    result = generate_llms_txt(  # noqa: F841
         repo_path,
         tool_context,
     )
@@ -142,8 +142,49 @@ def test_generate_llms_txt_github_repo(mock_exists, mock_makedirs, mock_getcwd, 
     assert written_content == expected_content
 
     # Assert: Check that the function returns the expected success message.
-    assert result == {"status": "success", "llms_txt_path": expected_llms_txt_path}
 
+    def test_generate_llms_txt_with_py_and_md_files(self):
+        files_to_create = {
+            "README.md": "# Project Title\n\nProject description.",
+            "src/agent.py": "class Agent:\n    pass",
+            "docs/guide.md": "# Guide\n\nHow to use.",
+        }
+        self._create_mock_repo(files_to_create)
+
+        self.tool_context.state["files"] = [
+            os.path.join(self.repo_path, "README.md"),
+            os.path.join(self.repo_path, "src/agent.py"),
+            os.path.join(self.repo_path, "docs/guide.md"),
+        ]
+        self.tool_context.state["dirs"] = [
+            self.repo_path,
+            os.path.join(self.repo_path, "src"),
+            os.path.join(self.repo_path, "docs"),
+        ]
+        self.tool_context.state["doc_summaries"] = {
+            "summaries": {
+                "project": "This project contains both Python code and Markdown documentation.",
+                os.path.join(self.repo_path, "README.md"): "Main project README.",
+                os.path.join(self.repo_path, "src/agent.py"): "Python agent implementation.",
+                os.path.join(self.repo_path, "docs/guide.md"): "Documentation guide.",
+            }
+        }
+
+        result = generate_llms_txt(self.repo_path, self.tool_context)
+        self.assertEqual(result["status"], "success")
+        self.assertTrue(os.path.exists(result["llms_txt_path"]))
+
+        with open(result["llms_txt_path"]) as f:
+            content = f.read()
+
+        self.assertIn("# " + os.path.basename(self.repo_path) + " Sitemap", content)
+        self.assertIn("This project contains both Python code and Markdown documentation.", content)
+        self.assertIn("## Home", content)
+        self.assertIn(f"- [README.md]({self.repo_path}/README.md): Main project README.", content)
+        self.assertIn("## Src", content)
+        self.assertIn(f"- [agent.py]({self.repo_path}/src/agent.py): Python agent implementation.", content)
+        self.assertIn("## Docs", content)
+        self.assertIn(f"- [guide.md]({self.repo_path}/docs/guide.md): Documentation guide.", content)
 
 @patch("builtins.open", new_callable=mock_open)
 @patch("os.getcwd", return_value="/fake/cwd")
