@@ -6,8 +6,16 @@ Author: Darren Lester
 
 ## Table of Contents
 
-- [Repo Overview](#repo-overview)
+- [Repo Metadata](#repo-metadata)
 - [Getting Started](#getting-started)
+  - [Environment Variables](#environment-variables)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [How to Use](#how-to-use)
+  - [Command](#command)
+  - [Arguments](#arguments)
+  - [Options](#options)
+- [Repo Overview](#repo-overview)
 - [How to Use the Generated llms.txt](#how-to-use-the-generated-llmstxt)
 - [Associated Articles](#associated-articles)
 - [Useful Commands](#useful-commands)
