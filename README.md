@@ -1,30 +1,56 @@
 # LLMS-Generator
 
-## Repo Metadata
-
-Author: Darren Lester
-
 ## Table of Contents
 
+- [Repo Overview](#repo-overview)
 - [Repo Metadata](#repo-metadata)
 - [Getting Started](#getting-started)
-  - [Environment Variables](#environment-variables)
   - [Prerequisites](#prerequisites)
+  - [Environment Variables](#environment-variables)
   - [Installation](#installation)
 - [How to Use](#how-to-use)
   - [Command](#command)
   - [Arguments](#arguments)
   - [Options](#options)
-- [Repo Overview](#repo-overview)
+
 - [How to Use the Generated llms.txt](#how-to-use-the-generated-llmstxt)
 - [Associated Articles](#associated-articles)
 - [Useful Commands](#useful-commands)
   - [Testing](#testing)
   - [Running in a Local Container](#running-in-a-local-container)
 
+## Repo Overview
+
+_LLMS-Generator_ is an agentic solution designed to create a `llms.txt` file for any given repo or folder.
+
+The `llms.txt` file is an AI/LLM-friendly markdown file that enables an AI to understand the purpose of the a repo, as well as have a full understanding of the repo site map and the purpose of each file it finds. This is particularly useful when providing AIs (like Gemini) access to documentation repos.
+
+The `llms.txt` file will have this structure:
+
+- An H1 with the name of the project or site
+- An overview of the project / site purpose.
+- Zero or more markdown sections delimited by H2 headers, containing appropriate section summaries.
+- Each section contains a list of of markdown hyperlinks, in the format: `[name](url): summary`.
+
+See [here](https://github.com/AnswerDotAI/llms-txt) for a more detailed description of the `llms.txt` standard.
+
+## Repo Metadata
+
+Author: Darren Lester
+
+## How to Use the Generated llms.txt
+
+An AI can easily read the `llms.txt` and follow the links it finds there. When you ask your agent a deep-dive question about a topic, the agent will be able to follow the appropriate links to give you grounded answers.
+
 ## Getting Started
 
 To get started with LLMS-Generator, follow these steps:
+
+### Prerequisites
+
+*   **uv:** Ensure you have `uv` installed for Python package and environment management. If not, you can install it by following the instructions on the [uv website](https://astral.sh/uv/install/).
+*   **Google Cloud SDK:** Install the Google Cloud SDK to interact with GCP services. Follow the official [Google Cloud SDK documentation](https://cloud.google.com/sdk/docs/install) for installation instructions.
+*   **make:** Ensure `make` is installed on your system. It's typically available on most Unix-like systems.
 
 ### Environment Variables
 
@@ -58,12 +84,6 @@ BACKOFF_MAX_DELAY=60
 BACKOFF_MULTIPLIER=2 # exponential delay growth
 
 ```
-
-### Prerequisites
-
-*   **uv:** Ensure you have `uv` installed for Python package and environment management. If not, you can install it by following the instructions on the [uv website](https://astral.sh/uv/install/).
-*   **Google Cloud SDK:** Install the Google Cloud SDK to interact with GCP services. Follow the official [Google Cloud SDK documentation](https://cloud.google.com/sdk/docs/install) for installation instructions.
-*   **make:** Ensure `make` is installed on your system. It's typically available on most Unix-like systems.
 
 ### Installation
 
@@ -106,25 +126,6 @@ llms-gen --repo-path /path/to/your/repo [OPTIONS]
 
 *   `--output-path` / `-o`: The absolute path to save the `llms.txt` file. If not specified, it will be saved in a `temp` directory in the current working directory.
 *   `--log-level` / `-l`: Set the log level for the application (e.g., `DEBUG`, `INFO`, `WARNING`, `ERROR`). This will override any `LOG_LEVEL` environment variable.
-
-## Repo Overview
-
-_LLMS-Generator_ is an agentic solution designed to create a `llms.txt` file for any given repo or folder.
-
-The `llms.txt` file is an AI/LLM-friendly markdown file that enables an AI to understand the purpose of the a repo, as well as have a full understanding of the repo site map and the purpose of each file it finds. This is particularly useful when providing AIs (like Gemini) access to documentation repos.
-
-The `llms.txt` file will have this structure:
-
-- An H1 with the name of the project or site
-- An overview of the project / site purpose.
-- Zero or more markdown sections delimited by H2 headers, containing appropriate section summaries.
-- Each section contains a list of of markdown hyperlinks, in the format: `[name](url): summary`.
-
-See [here](https://github.com/AnswerDotAI/llms-txt) for a more detailed description of the `llms.txt` standard.
-
-## How to Use the Generated llms.txt
-
-An AI can easily read the `llms.txt` and follow the links it finds there. When you ask your agent a deep-dive question about a topic, the agent will be able to follow the appropriate links to give you grounded answers.
 
 ## Associated Articles
 
