@@ -92,6 +92,8 @@ Once the dependencies are installed and the environment is set up, you can use t
 
 ### Command
 
+The `llms-gen` command-line tool is exposed via the `[project.scripts]` section in `pyproject.toml`. When the package is installed, this entry point allows you to run `llms-gen` directly from your terminal, which executes the `app` object defined in `src/client_fe/cli.py`.
+
 ```bash
 llms-gen --repo-path /path/to/your/repo [OPTIONS]
 ```

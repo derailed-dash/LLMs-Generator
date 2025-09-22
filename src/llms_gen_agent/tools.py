@@ -52,6 +52,7 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
     logger.debug("Entering tool: discover_files with repo_path: %s", repo_path)
 
     excluded_dirs = {'.git', '.github', 'overrides', '.venv', 'node_modules', '__pycache__', '.pytest_cache'}
+    excluded_files = {'__init__'}
     included_extensions = {'.md', '.py'}
 
     directory_map: dict[str, list[str]] = {}
@@ -61,7 +62,8 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
             # Modify subdirs in place so that os.walk() sees changes directly
             subdirs[:] = [d for d in subdirs if d not in excluded_dirs]
             for file in files:
-                if any(file.endswith(ext) for ext in included_extensions):
+                if (any(file.endswith(ext) for ext in included_extensions) 
+                        and not any(file.startswith(ext) for ext in excluded_files)):
                     file_path = os.path.join(root, file)
                     directory = os.path.dirname(file_path)
                     if directory not in directory_map:
