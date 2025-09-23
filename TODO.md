@@ -15,4 +15,5 @@
 - [ ] Write blog.
 - [ ] Increase test coverage by adding unit tests for the agents and other utility functions.
 - [ ] Add integration tests to test the end-to-end functionality of the agent.
-- [ ] Make the list of excluded directories in `discover_files` configurable.
+- [ ] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
+- [ ] Make the solution iterate, e.g. if output is incomplete, or nearing filling context window.
