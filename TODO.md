@@ -4,14 +4,14 @@
 - [x] Create initial `TODO`
 - [x] Create `pyproject.toml`
 - [x] Create `.env` and point to a Google Cloud project
-- [x] Create `GEMINI.md`
 - [x] Create environment setup script
 - [x] Create `Makefile`
+- [x] Create `GEMINI.md`
+- [x] Create configuration and logging modules
 - [x] Create Coordinator Agent
 - [x] Create Discover Files tool
 - [x] Create File Reader Agent and file read tool
 - [x] Create Content Summariser Agent
-- [x] Create configuration and logging modules
 - [x] Create initial unit tests
 - [x] Create experimentation Jupyter notebook
 - [x] Parameterise number of files to process
