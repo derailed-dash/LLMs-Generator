@@ -1,4 +1,21 @@
-"""Summarises the contents of a document"""
+"""
+Defines a sequential agent responsible for summarizing documents.
+
+This module contains the `document_summariser_agent`, a `SequentialAgent` that
+orchestrates a two-step process to read and summarize a collection of files.
+
+The process is as follows:
+1.  **File Reading:** The `file_reader_agent` reads the content of specified
+    files, storing the content in the session state.
+2.  **Content Summarization:** The `content_summariser_agent` takes the
+    collected file content and performs two key tasks:
+    - It generates a concise summary for each individual file.
+    - It generates a higher-level summary for the entire project based on the
+      content of all files.
+
+The final output is a single JSON object containing both the individual file
+summaries and the overall project summary.
+"""
 import re
 
 from google.adk.agents import Agent, SequentialAgent

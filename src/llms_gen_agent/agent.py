@@ -39,7 +39,7 @@ Here's the detailed process you should follow:
     If not, you should provide an appropriate response to the user and STOP HERE.
 3.  **Summarize Files**: Delegate to the `document_summariser_agent` Agent Tool.
     **CRITICAL: This tool MUST be called with NO arguments.**
-    The `document_summariser_agent` will read the list of files from the session state under the key 'files' 
+    The `document_summariser_agent` will read the list of files from the session state 
     (which was populated by the `discover_files` tool). 
     The `document_summariser_agent` will then return the full set of summaries as JSON 
     with a single key `summaries` that contains a dictionary of all the path:summary pairs.
