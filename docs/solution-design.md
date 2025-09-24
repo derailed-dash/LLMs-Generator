@@ -73,7 +73,7 @@ The LLMS-Generator is implemented as an agentic application using the `google-ad
   3. The `generate_llms_coordinator` agent executes the following sequence:
      a. It calls the `discover_files` tool to get a list of all relevant file paths in the repository.
      b. It delegates the summarization task to the `document_summariser_agent`.
-     c. The `document_summariser_agent` (a `SequentialAgent`) first uses the `file_reader_agent` to read the content of each file. A callback (`after_file_read_callback`) stores this content in the session state.
-     d. Next, the `content_summariser_agent` processes the file contents from the session state, generating a summary for each file and an overall project summary. A callback (`strip_json_markdown_callback`) is used to clean the LLM's JSON output.
+     c. The `document_summariser_agent` (a `SequentialAgent`) first uses the `file_reader_agent` to read the content of all the files. The content is stored in the session state.
+     d. Next, the `content_summariser_agent` processes the file contents from the session state, generating a summary for each file and an overall project summary. A callback (`clean_json_callback`) is used to clean the LLM's JSON output.
      e. The `generate_llms_coordinator` receives the summaries from the sub-agent.
      f. Finally, it calls the `generate_llms_txt` tool to write the final `llms.txt` file.

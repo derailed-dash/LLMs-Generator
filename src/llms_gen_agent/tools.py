@@ -7,30 +7,17 @@ read their contents, and generate a structured `llms.txt` sitemap file based on 
 Key functionalities include:
 - `discover_files`: Scans a repository to find relevant files (e.g. markdown and python files),
   excluding common temporary or git-related directories.
+- `read_files`: Reads a list of files and stores their content in the tool context.
 - `generate_llms_txt`: Constructs the `llms.txt` Markdown file, organizing
   discovered files into sections with summaries.
-- `adk_file_read_tool`: A Langchain-based tool for reading file contents.
-- `after_file_read_callback`: A callback to process and store the content retrieved by the file read tool.
 """
-
 import os
-from typing import Any
 
 from google.adk.tools import ToolContext
-from google.adk.tools.base_tool import BaseTool
-from google.adk.tools.langchain_tool import LangchainTool
-from langchain_community.tools import ReadFileTool
 
-from .config import logger
+from .config import get_config, logger
 
-read_file_tool = ReadFileTool()
-
-# Wrap the custom tool with CrewaiTool for ADK
-adk_file_read_tool = LangchainTool(
-    name="FileRead",
-    description="Reads the contents of a file",
-    tool=read_file_tool, 
-)
+config = get_config()
 
 def _get_repo_details(repo_path: str) -> tuple[str, str]:
     """Extracts owner and repo name from the path."""
@@ -84,29 +71,48 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
         logger.error("Error in discover_files: %s", e)
         return {"status": "failure", "files": []}
 
-def after_file_read_callback(
-    tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, tool_response: Any) -> Any | None:
-    """
-    Callback function that runs after `adk_file_read_tool` is executed.
-    It stores the content of the read file into the session state using the file path as the key.
-    """
-    file_path = args["file_path"]
-    logger.debug(f"Executing after_file_read_callback: {file_path}")
+def read_files(tool_context: ToolContext) -> dict:
+    """Reads the content of files and stores it in the tool context.
 
-    if isinstance(tool_response, str):
-        content = tool_response # The tool_response itself is the content
-    elif isinstance(tool_response, dict) and "content" in tool_response:
-        content = tool_response["content"]
-    else:
-        logger.warning("tool_response is a {type(tool_response)}. Expected str or dict.")
+    This function retrieves a list of file paths from the `files` key in the
+    `tool_context.state`. It then iterates through this list, reads the
+    content of each file, and stores it in a dictionary under the
 
+    `files_content` key in the `tool_context.state`. The file path serves as
+    the key for its content.
+
+    It avoids re-reading files by checking if the file path already exists
+    in the `files_content` dictionary.
+
+    Returns:
+        A dictionary with a "status" key indicating the outcome ("success").
+    """
+    logger.debug("Executing read_files")
+    
+    file_paths = tool_context.state.get("files", [])
+    logger.debug(f"Got {len(file_paths)} files")
+    
     # Add new file_contents dict if it doesn't yet exist
     if "files_content" not in tool_context.state:
         tool_context.state["files_content"] = {}
-    
-    logger.debug(f"Adding content: {content[:80]}...")
-    tool_context.state["files_content"][file_path] = content
-    return tool_response    
+        
+    for file_path in file_paths:
+        if file_path not in tool_context.state["files_content"]:
+            try:
+                logger.debug(f"Reading file: {file_path}")
+                with open(file_path) as f:
+                    content = f.read()
+                    logger.debug(f"Read content: {content[:80]}...")
+                    tool_context.state["files_content"][file_path] = content
+            except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
+                logger.warning("Could not read file %s: %s", file_path, e)
+                # Store an error message so the summarizer knows it failed
+                tool_context.state["files_content"][file_path] = f"Error: Could not read file. Reason: {e}"
+            except Exception as e:
+                logger.error("An unexpected error occurred while reading %s: %s", file_path, e)
+                tool_context.state["files_content"][file_path] = f"Error: An unexpected error occurred. Reason: {e}"
+
+    return {"status": "success"} 
 
 def _get_llms_txt_base_url(repo_path: str) -> str:
     """Determines the base URL (GitHub or empty for local) for links."""
@@ -186,7 +192,8 @@ def _write_llms_txt_section(f, directory: str,
             summary = doc_summaries.get(file_path, "No summary")
             section_files_to_write.append((file_path, summary))
 
-    logger.debug(f"Section: {section_name}, Files: {section_files_to_write}")
+    logger.debug(f"Section: {section_name}, ""Files: \n   "
+                 f"{'\n   '.join(file_path for file_path, summary in section_files_to_write)}")
 
     for file_path, summary in sorted(section_files_to_write):
         link_text = os.path.basename(file_path)
@@ -228,7 +235,7 @@ def generate_llms_txt(repo_path: str, tool_context: ToolContext, output_path: st
 
     logger.debug("We have %d directories.", len(dirs))
     logger.debug("We have %d files", len(files))
-    logger.debug("We have %d summaries (after popping project): %s", len(doc_summaries), doc_summaries)
+    logger.debug("We have %d summaries (after popping project)", len(doc_summaries))
     logger.debug("Project summary: %s", project_summary[:100] if project_summary else "None")
 
     # If an output path has been specified...
