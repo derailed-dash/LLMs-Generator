@@ -25,7 +25,9 @@ The `llms.txt` file will adhere to a specific format, including:
 ## 3. Architecturally Significant Requirements (NFRs)
 
 - **Usability:** The CLI should be intuitive and easy to use for developers.
+- **Concurrency:** This is a developer-centric application. Initially it will run locally, and there is no need for concurrent use. This could be added later.
 - **Reliability:** The application should be robust, with graceful error handling for issues like invalid paths or API failures. The system must be resilient to API rate limiting by implementing a retry mechanism.
+- **High availability and DR:** As an infrequently and locally run developer-centric application, there is no requirement for HA or DR.
 - **Performance:** While summarisation is time-intensive, the application should be reasonably performant. A configurable file limit should be included to manage performance on very large repositories.
 - **Extensibility:** The agent-based architecture should allow for easy addition of new features and modification of existing logic.
 - **Maintainability:** The codebase is modular, with a clear separation of concerns (CLI, agent logic, tools), to facilitate easy maintenance.

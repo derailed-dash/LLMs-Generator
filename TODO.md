@@ -1,7 +1,22 @@
-
 # TODO
 
-- [x] Eliminate 429/quote issues when calling Gemini, particularly from `document_summariser_agent`.
+- [x] Create project scaffold, including `README`, `src`, agent folder, `.gitignore`, `.gitattributes`
+- [x] Create initial `TODO`
+- [x] Create `pyproject.toml`
+- [x] Create `.env` and point to a Google Cloud project
+- [x] Create `GEMINI.md`
+- [x] Create environment setup script
+- [x] Create `Makefile`
+- [x] Create Coordinator Agent
+- [x] Create Discover Files tool
+- [x] Create File Reader Agent and file read tool
+- [x] Create Content Summariser Agent
+- [x] Create configuration and logging modules
+- [x] Create initial unit tests
+- [x] Create experimentation Jupyter notebook
+- [x] Parameterise number of files to process
+- [x] Eliminate 429/quote issues when calling Gemini, particularly from `document_summariser_agent`
+- [x] Implement pydantic to enforce output schema
 - [x] Add callback to ensure doc summariser agent creates output in the correct JSON format.
 - [x] Add sequential agent such that all files are read first, and then all content is summarised second.
 - [x] Add callback to capture the output of read files and store in session state.
@@ -9,11 +24,10 @@
 - [x] Fewer sections, controlled by folder depth.
 - [x] Complete final `llms.txt` file creation.
 - [x] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
-- [x] Work out how to handle large repos without 429 errors.
-- [x] Remove temporary restriction on number of docs summarised.
 - [x] Make repo public.
 - [ ] Write blog.
 - [ ] Increase test coverage by adding unit tests for the agents and other utility functions.
+- [ ] Replace LangChain File Read tool with custom tool; eliminate need for callback.
 - [ ] Add integration tests to test the end-to-end functionality of the agent.
 - [ ] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
 - [ ] Exclude also based on .gitignore.

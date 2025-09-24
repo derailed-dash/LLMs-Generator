@@ -82,7 +82,6 @@ export BACKOFF_INIT_DELAY=5
 BACKOFF_ATTEMPTS=5
 BACKOFF_MAX_DELAY=60
 BACKOFF_MULTIPLIER=2 # exponential delay growth
-
 ```
 
 ### Installation
@@ -116,6 +115,12 @@ The `llms-gen` command-line tool is exposed via the `[project.scripts]` section 
 
 ```bash
 llms-gen --repo-path /path/to/your/repo [OPTIONS]
+```
+
+E.g.
+
+```bash
+llms-gen --repo-path "/home/darren/localdev/gcp/adk-docs"
 ```
 
 ### Arguments

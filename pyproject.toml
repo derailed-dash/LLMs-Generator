@@ -10,7 +10,6 @@ dependencies = [
     "google-genai",
     "google-cloud-logging",
     "google-cloud-aiplatform[adk,evaluation,agent_engines]",
-    "google-cloud-secret-manager",
     "python-dotenv",
     "langchain-community",
     # Web framework
@@ -85,7 +84,7 @@ ignore_missing_imports = true      # Suppress errors about unresolved imports.
 explicit_package_bases = true      # Enforce explicit declaration of package bases.
 disable_error_code = ["misc", "no-any-return", "no-untyped-def"]
 
-exclude = [".venv"]
+exclude = [".venv", ".git"]
 
 [tool.codespell]
 ignore-words-list = "rouge"

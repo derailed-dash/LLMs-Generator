@@ -20,7 +20,7 @@ retry_options=HttpRetryOptions(
             max_delay=config.backoff_max_delay
 )
 
-def strip_json_markdown_callback(
+def clean_json(
     callback_context: CallbackContext,
     llm_response: LlmResponse
 ) -> LlmResponse | None:
@@ -147,7 +147,7 @@ content_summariser_agent = Agent(
     ),
     output_schema=DocumentSummariesOutput, # This is the final output schema
     output_key="doc_summaries", # json with top level called 'summaries'
-    after_model_callback=strip_json_markdown_callback # Apply callback here
+    after_model_callback=clean_json # Apply callback here
 )
 
 document_summariser_agent = SequentialAgent(
