@@ -53,7 +53,8 @@ def generate(
     """
     if log_level: # Override log level from cmd line
         os.environ["LOG_LEVEL"] = log_level.upper()
-
+        console.print(f":exclamation: Overriding LOG_LEVEL from command line: [bold cyan]{log_level}[/bold cyan]")
+    
     # Now that env vars are set, we can create the logger
     logger = setup_logger(APP_NAME)
 

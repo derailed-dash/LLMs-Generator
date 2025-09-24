@@ -37,3 +37,6 @@ lint:
 	uv run ruff check . --diff
 	uv run mypy .
 
+generate:
+	@echo "Running LLMS-Generator..."
+	uv run llms-gen --repo-path "/home/darren/localdev/gcp/adk-docs"
