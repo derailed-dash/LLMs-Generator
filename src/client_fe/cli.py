@@ -57,13 +57,16 @@ def generate(
     # Now that env vars are set, we can create the logger
     logger = setup_logger(APP_NAME)
 
-    logger.info(f"Generating llms.txt for repository at: {repo_path}")
+    console.print(f":robot: Generating llms.txt for repository at: [bold cyan]{repo_path}[/bold cyan]")
     query = f"Generate the llms.txt file for the repository at {repo_path}"
     if output_path:
         query += f" and save it to {output_path}"
 
-    asyncio.run(call_agent_async(query, logger))
-    logger.info("llms.txt generation complete.")
+    # Show a spinner
+    with console.status("[bold green]Generating file content...[/bold green]"):
+        asyncio.run(call_agent_async(query, logger))
+    
+    console.print("[bold green]:white_check_mark: llms.txt generation complete.[/bold green]")
 
 
 if __name__ == "__main__":
