@@ -88,7 +88,6 @@ file_reader_agent = Agent(
     tools=[
         read_files
     ],
-    output_key="files_content"
 )
 
 content_summariser_prompt = """You are an expert summariser. 

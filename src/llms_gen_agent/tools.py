@@ -91,10 +91,14 @@ def read_files(tool_context: ToolContext) -> dict:
     
     file_paths = tool_context.state.get("files", [])
     logger.debug(f"Got {len(file_paths)} files")
-    
-    # Add new file_contents dict if it doesn't yet exist
-    if "files_content" not in tool_context.state:
-        tool_context.state["files_content"] = {}
+
+    # Implement max files constraint
+    if config.max_files_to_process > 0:
+        logger.info(f"Limiting to {config.max_files_to_process} files")
+        file_paths = file_paths[:config.max_files_to_process]
+
+    # Initialise our session state key    
+    tool_context.state["files_content"] = {}
         
     for file_path in file_paths:
         if file_path not in tool_context.state["files_content"]:
