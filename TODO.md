@@ -15,12 +15,12 @@
 - [x] Create initial unit tests
 - [x] Create experimentation Jupyter notebook
 - [x] Parameterise number of files to process
-- [x] Eliminate 429/quote issues when calling Gemini, particularly from `document_summariser_agent`
 - [x] Implement pydantic to enforce output schema
 - [x] Add callback to ensure doc summariser agent creates output in the correct JSON format.
 - [x] Add sequential agent such that all files are read first, and then all content is summarised second.
 - [x] Add callback to capture the output of read files and store in session state.
 - [x] Complete project summarisation step.
+- [x] Eliminate 429/quote issues when calling Gemini, particularly from `document_summariser_agent`
 - [x] Fewer sections, controlled by folder depth.
 - [x] Complete final `llms.txt` file creation.
 - [x] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
