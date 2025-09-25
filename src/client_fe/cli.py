@@ -20,22 +20,23 @@ if not load_dotenv(find_dotenv(), override=True):
 import typer
 from rich.console import Console
 
-from client_fe.runner import APP_NAME, call_agent_async
+from client_fe.runner import call_agent_async
 from common_utils.logging_utils import setup_logger
+from llms_gen_agent.config import current_config
 
-app = typer.Typer()
+app = typer.Typer(add_completion=False)
 console = Console()
 
 @app.command()
 def generate(
     repo_path: str = typer.Option(
-        ...,
+        ..., # this means: required
         "--repo-path",
         "-r",
         help="The absolute path to the repository/folder to generate the llms.txt file for.",
     ),
     output_path: str = typer.Option(
-        None,
+        None, # Optional
         "--output-path",
         "-o",
         help=("The absolute path to save the llms.txt file. If not specified, "
@@ -46,18 +47,28 @@ def generate(
         "--log-level",
         "-l",
         help="Set the log level for the application. This will override any LOG_LEVEL environment variable."
+    ),
+    max_files_to_process: int = typer.Option(
+        None,
+        "--max-files-to-process",
+        "-m",
+        help="Set the maximum number of files to process. 0 means no limit."
     )
-):
+ ):
     """
     Generate the llms.txt file for a given repository.
     """
+    
     if log_level: # Override log level from cmd line
         os.environ["LOG_LEVEL"] = log_level.upper()
-        console.print(f":exclamation: Overriding LOG_LEVEL from command line: [bold cyan]{log_level}[/bold cyan]")
-    
-    # Now that env vars are set, we can create the logger
-    logger = setup_logger(APP_NAME)
+        console.print(f":exclamation: Overriding LOG_LEVEL: [bold cyan]{log_level}[/bold cyan]")
+        logger = setup_logger(current_config.agent_name)
 
+    if max_files_to_process: # Override max files to process from cmd line
+        os.environ["MAX_FILES_TO_PROCESS"] = str(max_files_to_process)
+        current_config.invalidate()
+        console.print(f":exclamation: Overriding MAX_FILES_TO_PROCESS: [bold cyan]{max_files_to_process}[/bold cyan]")
+        
     console.print(f":robot: Generating llms.txt for repository at: [bold cyan]{repo_path}[/bold cyan]")
     query = f"Generate the llms.txt file for the repository at {repo_path}"
     if output_path:

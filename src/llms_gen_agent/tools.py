@@ -15,9 +15,8 @@ import os
 
 from google.adk.tools import ToolContext
 
-from .config import get_config, logger
+from .config import logger, setup_config
 
-config = get_config()
 
 def _get_repo_details(repo_path: str) -> tuple[str, str]:
     """Extracts owner and repo name from the path."""
@@ -88,6 +87,7 @@ def read_files(tool_context: ToolContext) -> dict:
         A dictionary with a "status" key indicating the outcome ("success").
     """
     logger.debug("Executing read_files")
+    config = setup_config() # dynamically load config
     
     file_paths = tool_context.state.get("files", [])
     logger.debug(f"Got {len(file_paths)} files")
@@ -99,7 +99,8 @@ def read_files(tool_context: ToolContext) -> dict:
 
     # Initialise our session state key    
     tool_context.state["files_content"] = {}
-        
+    
+    response = {"status": "success"}
     for file_path in file_paths:
         if file_path not in tool_context.state["files_content"]:
             try:
@@ -112,11 +113,13 @@ def read_files(tool_context: ToolContext) -> dict:
                 logger.warning("Could not read file %s: %s", file_path, e)
                 # Store an error message so the summarizer knows it failed
                 tool_context.state["files_content"][file_path] = f"Error: Could not read file. Reason: {e}"
+                response = {"status": "warnings"}
             except Exception as e:
                 logger.error("An unexpected error occurred while reading %s: %s", file_path, e)
                 tool_context.state["files_content"][file_path] = f"Error: An unexpected error occurred. Reason: {e}"
-
-    return {"status": "success"} 
+                response = {"status": "warnings"}
+    
+    return response
 
 def _get_llms_txt_base_url(repo_path: str) -> str:
     """Determines the base URL (GitHub or empty for local) for links."""
@@ -196,8 +199,7 @@ def _write_llms_txt_section(f, directory: str,
             summary = doc_summaries.get(file_path, "No summary")
             section_files_to_write.append((file_path, summary))
 
-    logger.debug(f"Section: {section_name}, ""Files: \n   "
-                 f"{'\n   '.join(file_path for file_path, summary in section_files_to_write)}")
+    logger.debug(f"Writing section: {section_name}")
 
     for file_path, summary in sorted(section_files_to_write):
         link_text = os.path.basename(file_path)

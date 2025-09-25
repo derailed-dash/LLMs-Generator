@@ -23,11 +23,11 @@ from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_response import LlmResponse
 from google.genai.types import GenerateContentConfig, HttpRetryOptions, Part
 
-from llms_gen_agent.config import get_config, logger
+from llms_gen_agent.config import logger, setup_config
 from llms_gen_agent.schema_types import DocumentSummariesOutput
 from llms_gen_agent.tools import read_files
 
-config = get_config()
+config = setup_config()
 
 retry_options=HttpRetryOptions(
             initial_delay=config.backoff_init_delay,

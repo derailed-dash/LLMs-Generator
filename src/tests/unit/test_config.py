@@ -24,8 +24,8 @@ def mock_env_and_auth():
 def test_get_config_defaults(mock_env_and_auth):
     """Tests that get_config returns default values when no environment variables are set."""
     mock_env_and_auth.return_value = (None, "test-project-id")
-    from llms_gen_agent.config import get_config
-    config = get_config()
+    from llms_gen_agent.config import setup_config
+    config = setup_config()
 
     assert config.agent_name == "llms_gen_agent"
     assert config.project_id == "test-project-id"
@@ -45,8 +45,8 @@ def test_get_config_env_vars(mock_env_and_auth):
     }
     with patch.dict(os.environ, env_vars):
         mock_env_and_auth.return_value = (None, "my-gcp-project")
-        from llms_gen_agent.config import get_config
-        config = get_config()
+        from llms_gen_agent.config import setup_config
+        config = setup_config()
 
     assert config.agent_name == "my-test-agent"
     assert config.project_id == "my-gcp-project"
@@ -58,6 +58,6 @@ def test_get_config_env_vars(mock_env_and_auth):
 def test_get_config_no_project_id(mock_env_and_auth):
     """Tests that get_config raises ConfigError if project ID is not set."""
     mock_env_and_auth.return_value = (None, None)
-    from llms_gen_agent.config import get_config
+    from llms_gen_agent.config import setup_config
     with pytest.raises(ConfigError, match="GCP Project ID not set"):
-        get_config()
+        setup_config()

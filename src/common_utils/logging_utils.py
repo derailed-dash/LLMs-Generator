@@ -24,10 +24,8 @@ to other modules. E.g.
 
 import logging
 import os
-from functools import cache
 
 
-@cache # We only one one logger for a given app_name
 def setup_logger(app_name: str) -> logging.Logger:
     # Suppress verbose logging from ADK and GenAI libraries - INFO logging is quite verbose
     logging.getLogger("google_adk").setLevel(logging.ERROR)

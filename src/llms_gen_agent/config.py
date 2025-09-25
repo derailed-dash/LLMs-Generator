@@ -1,6 +1,5 @@
 """This module provides configuration for the LLMS-Generator agent."""
 
-import functools
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -41,45 +40,81 @@ class Config:
     backoff_attempts: int
     backoff_max_delay: int
     backoff_multiplier: int
+    
+    valid: bool = True # Set this to False to force config reload from env vars
+    
+    def invalidate(self):
+        """ Invalidate current config. This forces the config to be refreshed from the environment when
+        get_config() is next called. """
+        logger.debug("Invalidating current config.")
+        self.valid = False
+
+    def __str__(self):
+        return (
+            f"Agent Name: {self.agent_name}\n"
+            f"Project ID: {self.project_id}\n"
+            f"Location: {self.location}\n"
+            f"Model: {self.model}\n"
+            f"GenAI Use VertexAI: {self.genai_use_vertexai}\n"
+            f"Max Files To Process: {self.max_files_to_process}\n"
+            f"Backoff Init Delay: {self.backoff_init_delay}\n"
+            f"Backoff Attempts: {self.backoff_attempts}\n"
+            f"Backoff Max Delay: {self.backoff_max_delay}\n"
+            f"Backoff Multiplier: {self.backoff_multiplier}\n"
+        )
 
 def _get_env_var(key: str, default_value: str, type_converter: Callable=str):
     """Helper to get environment variables with a default and type conversion."""
     return type_converter(os.environ.setdefault(key, default_value))
 
-@functools.lru_cache(maxsize=1)
-def get_config() -> Config:
-    """Return a dictionary of the current config by reading from environment."""
+current_config = None
 
-    _, project_id = google.auth.default()
-    if not project_id:
-        raise ConfigError("GCP Project ID not set. Have you run scripts/setup-env.sh?")
+def setup_config() -> Config:
+    """Gets the application configuration by reading from the environment.
+    The expensive Google Auth call to determine the project ID is only performed once.
+    If the current_config is invalid, the config will be refreshed from the environment.
+    Otherwise, the cached config is returned.
 
-    # GCP Configuration
+    Returns:
+        Config: An object containing the current application configuration.
+
+    Raises:
+        ConfigError: If the GCP Project ID cannot be determined on the first call.
+    """
+    global current_config
+    
+    # Load env vars
     location = _get_env_var("GOOGLE_CLOUD_LOCATION", DEFAULT_GCP_LOCATION)
     model = _get_env_var("MODEL", DEFAULT_MODEL)
     genai_use_vertexai = _get_env_var("GOOGLE_GENAI_USE_VERTEXAI", DEFAULT_GENAI_USE_VERTEXAI, lambda x: x.lower() == "true")
-    
-    # Agent Specific Configuration
     max_files_to_process = _get_env_var("MAX_FILES_TO_PROCESS", DEFAULT_MAX_FILES_TO_PROCESS, int)
-    
-    # Backoff Configuration
     backoff_init_delay = _get_env_var("BACKOFF_INIT_DELAY", DEFAULT_BACKOFF_INIT_DELAY, int)
     backoff_attempts = _get_env_var("BACKOFF_ATTEMPTS", DEFAULT_BACKOFF_ATTEMPTS, int)
     backoff_max_delay = _get_env_var("BACKOFF_MAX_DELAY", DEFAULT_BACKOFF_MAX_DELAY, int)
     backoff_multiplier = _get_env_var("BACKOFF_MULTIPLIER", DEFAULT_BACKOFF_MULTIPLIER, int)
+    
+    if current_config: # If we've already loaded the config before
+        if current_config.valid: # return it as is
+            return current_config
+        else: # Current config invalid - we need to update it
+            current_config.location=location
+            current_config.model=model
+            current_config.genai_use_vertexai=genai_use_vertexai
+            current_config.max_files_to_process=max_files_to_process
+            current_config.backoff_init_delay=backoff_init_delay
+            current_config.backoff_attempts=backoff_attempts
+            current_config.backoff_max_delay=backoff_max_delay
+            current_config.backoff_multiplier=backoff_multiplier
+            
+            logger.info(f"Updated config:\n{current_config}")
+            return current_config            
 
-    logger.debug("Agent name set to %s", agent_name)
-    logger.debug("Project ID set to %s", project_id)
-    logger.debug("Location set to %s", location)
-    logger.debug("Model set to %s", model)
-    logger.debug("Max files to process set to %s", max_files_to_process)
-    logger.debug("GenAI use Vertex AI set to %s", genai_use_vertexai)
-    logger.debug("Backoff initial delay set to %s", backoff_init_delay)
-    logger.debug("Backoff attempts set to %s", backoff_attempts)
-    logger.debug("Backoff max delay set to %s", backoff_max_delay)
-    logger.debug("Backoff multiplier set to %s", backoff_multiplier)
+    # If we're here, then we've never created a config before
+    _, project_id = google.auth.default()
+    if not project_id:
+        raise ConfigError("GCP Project ID not set. Have you run scripts/setup-env.sh?")
 
-    return Config(
+    current_config = Config(
         agent_name=agent_name,
         project_id=project_id,
         location=location,
@@ -91,4 +126,7 @@ def get_config() -> Config:
         backoff_max_delay=backoff_max_delay,
         backoff_multiplier=backoff_multiplier
     )
+    
+    logger.info(f"Loaded config:\n{current_config}")
+    return current_config
 

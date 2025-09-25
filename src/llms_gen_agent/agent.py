@@ -6,11 +6,11 @@ from google.adk.models.google_llm import Gemini
 from google.adk.tools.agent_tool import AgentTool
 from google.genai.types import GenerateContentConfig, HttpRetryOptions
 
-from .config import get_config
+from .config import setup_config
 from .sub_agents.doc_summariser import document_summariser_agent
 from .tools import discover_files, generate_llms_txt
 
-config = get_config()
+config = setup_config()
 
 # Agent is an alias for LlmAgent
 # It is non-deterministic and decides what tools to use, 
