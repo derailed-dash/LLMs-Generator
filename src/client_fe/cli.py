@@ -62,7 +62,7 @@ def generate(
     if log_level: # Override log level from cmd line
         os.environ["LOG_LEVEL"] = log_level.upper()
         console.print(f":exclamation: Overriding LOG_LEVEL: [bold cyan]{log_level}[/bold cyan]")
-        logger = setup_logger(current_config.agent_name)
+        setup_logger(current_config.agent_name)
 
     if max_files_to_process: # Override max files to process from cmd line
         os.environ["MAX_FILES_TO_PROCESS"] = str(max_files_to_process)
@@ -75,8 +75,9 @@ def generate(
         query += f" and save it to {output_path}"
 
     # Show a spinner
-    with console.status("[bold green]Generating file content...[/bold green]"):
-        asyncio.run(call_agent_async(query, logger))
+    with console.status("[bold green]Generating file content... [/bold green]"):
+        console.print()
+        asyncio.run(call_agent_async(query))
     
     console.print("[bold green]:white_check_mark: llms.txt generation complete.[/bold green]")
 
