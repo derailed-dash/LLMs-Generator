@@ -24,7 +24,6 @@ The `llms.txt` file will adhere to a specific format, including:
 
 ## 3. Architecturally Significant Requirements (NFRs)
 
-- **Usability:** The CLI should be intuitive and easy to use for developers.
 - **Concurrency:** This is a developer-centric application. Initially it will run locally, and there is no need for concurrent use. This could be added later.
 - **Reliability:** The application should be robust, with graceful error handling for issues like invalid paths or API failures. The system must be resilient to API rate limiting by implementing a retry mechanism.
 - **High availability and DR:** As an infrequently and locally run developer-centric application, there is no requirement for HA or DR.
@@ -36,6 +35,10 @@ The `llms.txt` file will adhere to a specific format, including:
 ## 4. Solution Design
 
 The LLMS-Generator is implemented as an agentic application using the `google-adk` framework. The architecture is composed of a CLI, an orchestrator agent, and several sub-agents and tools.
+
+The solution design below shows component interactions, and the arrow labels show the sequence of interactions:
+
+![Solution Design Diagram](generate-llms-adk.drawio.png)
 
 - **Sub-Agents:** The `document_summariser_agent` is a `SequentialAgent` that composes the `file_reader_agent` and `content_summariser_agent`, demonstrating a modular, multi-agent approach.
 
@@ -66,6 +69,8 @@ The LLMS-Generator is implemented as an agentic application using the `google-ad
 
 - **Exponential Backoff for API Calls:**
   - **Rationale:** The application may make frequent calls to the model in a short amount of time. This will lead to [429 errors](https://cloud.google.com/blog/products/ai-machine-learning/learn-how-to-handle-429-resource-exhaustion-errors-in-your-llms). We can mitigate with exponential backoff.
+
+- **No persistence required:** it is expected that the entire flow can be accomplished without any need for external working storage or databases. If the workflow exceeds what is possible within model context, we can implement external persistence later. E.g. we could implement a simple Firestore database to store content we have gathered, and to build up the summaries, before returning them to the agent.
 
 ## 6. Workflow
   1. The user runs the `llms-gen` command from the CLI, providing the repository path.

@@ -2,8 +2,8 @@
 
 ## Table of Contents
 
-- [Repo Overview](#repo-overview)
 - [Repo Metadata](#repo-metadata)
+- [Repo Overview](#repo-overview)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Environment Variables](#environment-variables)
@@ -19,28 +19,42 @@
   - [Testing](#testing)
   - [Running in a Local Container](#running-in-a-local-container)
 
+## Repo Metadata
+
+Author: Darren Lester
+
 ## Repo Overview
 
 _LLMS-Generator_ is an agentic solution designed to create a `llms.txt` file for any given repo or folder.
 
 The `llms.txt` file is an AI/LLM-friendly markdown file that enables an AI to understand the purpose of the a repo, as well as have a full understanding of the repo site map and the purpose of each file it finds. This is particularly useful when providing AIs (like Gemini) access to documentation repos.
 
-The `llms.txt` file will have this structure:
+An `llms.txt` file should have this structure:
 
-- An H1 with the name of the project or site
+- An `H1` with the name of the project or site
 - An overview of the project / site purpose.
-- Zero or more markdown sections delimited by H2 headers, containing appropriate section summaries.
+- Zero or more markdown sections delimited by `H2` headers, containing appropriate section summaries.
 - Each section contains a list of of markdown hyperlinks, in the format: `[name](url): summary`.
 
 See [here](https://github.com/AnswerDotAI/llms-txt) for a more detailed description of the `llms.txt` standard.
 
-## Repo Metadata
-
-Author: Darren Lester
-
 ## How to Use the Generated llms.txt
 
 An AI can easily read the `llms.txt` and follow the links it finds there. When you ask your agent a deep-dive question about a topic, the agent will be able to follow the appropriate links to give you grounded answers.
+
+It is easy to provide an agent with the ability to consume an `llms.txt` file with an MCP server, like this one: [ADK-Docs-Ext](https://github.com/derailed-dash/adk-docs-ext).
+
+## Related Links and Docs
+
+- [Give Your AI Agents Deep Understanding With LLMS.txt](https://medium.com/google-cloud/give-your-ai-agents-deep-understanding-with-llms-txt-4f948590332b)
+- [Give Your AI Agents Deep Understanding - Creating the LLMS.txt with a Multi-Agent ADK Solution - Coming Soon](tbd)
+- [ADK Docs Extension for Gemini CLI](https://github.com/derailed-dash/adk-docs-ext)
+
+## Solution Design
+
+![Solution Design Diagram](docs/generate-llms-adk.drawio.png)
+
+Check the design [here](docs/solution-design.md).
 
 ## Getting Started
 
@@ -111,7 +125,7 @@ Once the dependencies are installed and the environment is set up, you can use t
 
 ### Command
 
-The `llms-gen` command-line tool is exposed via the `[project.scripts]` section in `pyproject.toml`. When the package is installed, this entry point allows you to run `llms-gen` directly from your terminal, which executes the `app` object defined in `src/client_fe/cli.py`.
+The `llms-gen` command-line application is exposed via the `[project.scripts]` section in `pyproject.toml`. When the package is installed, this entry point allows you to run `llms-gen` directly from your terminal, which executes the `app` object defined in `src/client_fe/cli.py`.
 
 ```bash
 llms-gen --repo-path /path/to/your/repo [OPTIONS]
@@ -145,6 +159,7 @@ Coming soon
 | `make playground`             | Launch UI for testing agent locally and remotely. This runs `uv run adk web src` |
 | `make test`                   | Run unit and integration tests |
 | `make lint`                   | Run code quality checks (codespell, ruff, mypy) |
+| `make generate`               | Execute the Llms-Generator command line application |
 | `uv run jupyter lab`          | Launch Jupyter notebook |
 
 For full command options and usage, refer to the [Makefile](Makefile).
@@ -162,7 +177,7 @@ For full command options and usage, refer to the [Makefile](Makefile).
 
 #### Testing Locally
 
-With CLI:
+With ADK CLI:
 
 ```bash
 uv run adk run src/llms_gen_agent
