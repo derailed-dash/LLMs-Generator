@@ -24,11 +24,12 @@
 - [x] Fewer sections, controlled by folder depth.
 - [x] Complete final `llms.txt` file creation.
 - [x] Provide a client way to run the application without having to send a prompt, e.g. using CLI arguments.
+- [x] Replace LangChain File Read tool with custom tool; eliminate need for callback.
 - [x] Make repo public.
-- [ ] Write blog.
+- [x] Write blog.
 - [ ] Increase test coverage by adding unit tests for the agents and other utility functions.
-- [ ] Replace LangChain File Read tool with custom tool; eliminate need for callback.
 - [ ] Add integration tests to test the end-to-end functionality of the agent.
 - [ ] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
 - [ ] Exclude also based on .gitignore.
+- [ ] Consider using ADK artifacts rather than storing file contents in session state. See [ADK Artififacts](https://google.github.io/adk-docs/artifacts/)
 - [ ] Make the solution iterate, e.g. if output is incomplete, or nearing filling context window.
