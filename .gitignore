@@ -201,3 +201,6 @@ my_env.tfvars
 .streamlit_chats
 .saved_chats
 .requirements.txt
+
+.gemini/
+gha-creds-*.json
