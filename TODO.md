@@ -27,6 +27,8 @@
 - [x] Replace LangChain File Read tool with custom tool; eliminate need for callback.
 - [x] Make repo public.
 - [x] Write blog.
+- [ ] Don't assume remote GitHub repo path matches local path.
+- [ ] Make sure it can work with remote GitHub repos as well as local.
 - [ ] Increase test coverage by adding unit tests for the agents and other utility functions.
 - [ ] Add integration tests to test the end-to-end functionality of the agent.
 - [ ] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
