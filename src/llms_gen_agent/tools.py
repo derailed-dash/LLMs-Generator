@@ -132,8 +132,8 @@ def _get_remote_url_from_git_config(git_config_path: str) -> str | None:
         config.read(git_config_path)
         remote_url = config.get('remote "origin"', 'url')
         # Convert SSH URL to HTTPS URL
-        if remote_url.startswith("git@github.com:"):
-            remote_url = remote_url.replace("git@github.com:", "https://github.com/")
+        if remote_url.startswith("git@"):
+            remote_url = re.sub(r'^git@([^:]+):', r'https://\1/', remote_url)
         if remote_url.endswith(".git"):
             remote_url = remote_url[:-4]
         return remote_url
