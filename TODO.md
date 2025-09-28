@@ -28,8 +28,9 @@
 - [x] Make repo public.
 - [x] Write blog.
 - [x] Don't assume remote GitHub repo path matches local path.
-- [ ] Make sure it can work with remote GitHub repos as well as local.
+- [x] Perform project review.
 - [ ] Increase test coverage by adding unit tests for the agents and other utility functions.
+- [ ] Make sure it can work with remote GitHub repos as well as local.
 - [ ] Add integration tests to test the end-to-end functionality of the agent.
 - [ ] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
 - [ ] Exclude also based on .gitignore.
