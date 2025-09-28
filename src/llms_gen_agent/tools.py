@@ -137,7 +137,7 @@ def _get_remote_url_from_git_config(git_config_path: str) -> str | None:
         if remote_url.endswith(".git"):
             remote_url = remote_url[:-4]
         return remote_url
-    except (configparser.NoSectionError, configparser.NoOptionError, FileNotFoundError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         return None
 
 def _get_llms_txt_base_url(repo_path: str) -> str:
