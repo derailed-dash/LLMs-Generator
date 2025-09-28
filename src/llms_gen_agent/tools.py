@@ -11,6 +11,7 @@ Key functionalities include:
 - `generate_llms_txt`: Constructs the `llms.txt` Markdown file, organizing
   discovered files into sections with summaries.
 """
+import configparser
 import os
 
 from google.adk.tools import ToolContext
@@ -121,13 +122,31 @@ def read_files(tool_context: ToolContext) -> dict:
     
     return response
 
+def _get_remote_url_from_git_config(git_config_path: str) -> str | None:
+    """Parses the git config to find the remote origin URL."""
+    if not os.path.exists(git_config_path):
+        return None
+
+    config = configparser.ConfigParser()
+    try:
+        config.read(git_config_path)
+        remote_url = config.get('remote "origin"', 'url')
+        # Convert SSH URL to HTTPS URL
+        if remote_url.startswith("git@github.com:"):
+            remote_url = remote_url.replace("git@github.com:", "https://github.com/")
+        if remote_url.endswith(".git"):
+            remote_url = remote_url[:-4]
+        return remote_url
+    except (configparser.NoSectionError, configparser.NoOptionError, FileNotFoundError):
+        return None
+
 def _get_llms_txt_base_url(repo_path: str) -> str:
     """Determines the base URL (GitHub or empty for local) for links."""
-    owner, repo_name = _get_repo_details(repo_path)
-    git_dir = os.path.join(repo_path, ".git")
+    git_config_path = os.path.join(repo_path, ".git", "config")
+    remote_url = _get_remote_url_from_git_config(git_config_path)
 
-    if os.path.exists(git_dir) and owner and repo_name:
-        return f"https://github.com/{owner}/{repo_name}/blob/main/"
+    if remote_url:
+        return f"{remote_url}/blob/main/"
     else:
         return "" # Use relative paths if not a GitHub repo or .git not found
 
