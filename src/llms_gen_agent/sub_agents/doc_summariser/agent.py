@@ -25,7 +25,8 @@ from google.genai.types import GenerateContentConfig, HttpRetryOptions, Part
 
 from llms_gen_agent.config import logger, setup_config
 from llms_gen_agent.schema_types import DocumentSummariesOutput
-from llms_gen_agent.tools import read_files
+
+from .tools import read_files
 
 config = setup_config()
 
