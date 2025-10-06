@@ -19,6 +19,9 @@ DEFAULT_BACKOFF_INIT_DELAY = "2"
 DEFAULT_BACKOFF_ATTEMPTS = "5"
 DEFAULT_BACKOFF_MAX_DELAY = "60"
 DEFAULT_BACKOFF_MULTIPLIER = "2"
+DEFAULT_EXCLUDED_DIRS = ".git,.github,overrides,.venv,node_modules,__pycache__,.pytest_cache"
+DEFAULT_EXCLUDED_FILES = "__init__"
+DEFAULT_INCLUDED_EXTENSIONS = ".md,.py"
 
 agent_name = os.environ.setdefault("AGENT_NAME", DEFAULT_AGENT_NAME)
 logger = setup_logger(agent_name)
@@ -40,6 +43,10 @@ class Config:
     backoff_attempts: int
     backoff_max_delay: int
     backoff_multiplier: int
+
+    excluded_dirs: set[str]
+    excluded_files: set[str]
+    included_extensions: set[str]
     
     valid: bool = True # Set this to False to force config reload from env vars
     
@@ -61,6 +68,9 @@ class Config:
             f"Backoff Attempts: {self.backoff_attempts}\n"
             f"Backoff Max Delay: {self.backoff_max_delay}\n"
             f"Backoff Multiplier: {self.backoff_multiplier}\n"
+            f"Excluded Dirs: {self.excluded_dirs}\n"
+            f"Excluded Files: {self.excluded_files}\n"
+            f"Included Extensions: {self.included_extensions}\n"
         )
 
 def _get_env_var(key: str, default_value: str, type_converter: Callable=str):
@@ -92,6 +102,9 @@ def setup_config() -> Config:
     backoff_attempts = _get_env_var("BACKOFF_ATTEMPTS", DEFAULT_BACKOFF_ATTEMPTS, int)
     backoff_max_delay = _get_env_var("BACKOFF_MAX_DELAY", DEFAULT_BACKOFF_MAX_DELAY, int)
     backoff_multiplier = _get_env_var("BACKOFF_MULTIPLIER", DEFAULT_BACKOFF_MULTIPLIER, int)
+    excluded_dirs = set(_get_env_var("EXCLUDED_DIRS", DEFAULT_EXCLUDED_DIRS).split(','))
+    excluded_files = set(_get_env_var("EXCLUDED_FILES", DEFAULT_EXCLUDED_FILES).split(','))
+    included_extensions = set(_get_env_var("INCLUDED_EXTENSIONS", DEFAULT_INCLUDED_EXTENSIONS).split(','))
     
     if current_config: # If we've already loaded the config before
         if current_config.valid: # return it as is
@@ -105,6 +118,9 @@ def setup_config() -> Config:
             current_config.backoff_attempts=backoff_attempts
             current_config.backoff_max_delay=backoff_max_delay
             current_config.backoff_multiplier=backoff_multiplier
+            current_config.excluded_dirs=excluded_dirs
+            current_config.excluded_files=excluded_files
+            current_config.included_extensions=included_extensions
             
             logger.info(f"Updated config:\n{current_config}")
             return current_config            
@@ -124,7 +140,10 @@ def setup_config() -> Config:
         backoff_init_delay=backoff_init_delay,
         backoff_attempts=backoff_attempts,
         backoff_max_delay=backoff_max_delay,
-        backoff_multiplier=backoff_multiplier
+        backoff_multiplier=backoff_multiplier,
+        excluded_dirs=excluded_dirs,
+        excluded_files=excluded_files,
+        included_extensions=included_extensions
     )
     
     logger.info(f"Loaded config:\n{current_config}")

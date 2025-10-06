@@ -32,7 +32,8 @@
 - [x] Increase test coverage by adding unit tests for the agents and other utility functions.
 - [x] Make sure it can work with remote GitHub repos as well as local.
 - [ ] Add integration tests to test the end-to-end functionality of the agent.
-- [ ] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
-- [ ] Exclude also based on .gitignore.
+- [x] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
+- [x] Exclude also based on .gitignore.
 - [ ] Consider using ADK artifacts rather than storing file contents in session state. See [ADK Artififacts](https://google.github.io/adk-docs/artifacts/)
 - [ ] Make the solution iterate, e.g. if output is incomplete, or nearing filling context window.
+- [ ] Allow configurable section depth when creating the `llms.txt`, using `.env` and `Config`

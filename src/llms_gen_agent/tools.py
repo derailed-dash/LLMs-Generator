@@ -14,9 +14,10 @@ import configparser
 import os
 import re
 
+import pathspec
 from google.adk.tools import ToolContext
 
-from .config import logger
+from .config import logger, setup_config
 
 
 def _get_repo_details(repo_path: str) -> tuple[str, str]:
@@ -26,9 +27,19 @@ def _get_repo_details(repo_path: str) -> tuple[str, str]:
     repo_name = path_parts[-1]
     return owner, repo_name
 
+def _get_gitignore(repo_path: str) -> pathspec.PathSpec:
+    """Reads the .gitignore file and returns a PathSpec object."""
+    gitignore_path = os.path.join(repo_path, ".gitignore")
+    patterns = []
+    if os.path.exists(gitignore_path):
+        with open(gitignore_path) as f:
+            patterns = f.read().splitlines()
+    return pathspec.PathSpec.from_lines('gitwildmatch', patterns)
+
 
 def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
     """Discovers all relevant files in the repository and returns a list of file paths.
+    We exclude directories and files specified in the .env, and which are included in the .gitignore.
 
     Args:
         repo_path: The absolute path to the repository to scan.
@@ -37,21 +48,22 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
         A dictionary with "status" (success/failure) and "files" (a list of file paths).
     """
     logger.debug("Entering tool: discover_files with repo_path: %s", repo_path)
-
-    excluded_dirs = {'.git', '.github', 'overrides', '.venv', 'node_modules', '__pycache__', '.pytest_cache'}
-    excluded_files = {'__init__'}
-    included_extensions = {'.md', '.py'}
+    config = setup_config()
+    gitignore_spec = _get_gitignore(repo_path)
 
     directory_map: dict[str, list[str]] = {}
     try:
         for root, subdirs, files in os.walk(repo_path):
-            
-            # Modify subdirs in place so that os.walk() sees changes directly
-            subdirs[:] = [d for d in subdirs if d not in excluded_dirs]
+            # Exclude directories based on gitignore and config
+            excluded_by_gitignore = set(gitignore_spec.match_files([os.path.join(root, d) for d in subdirs]))
+            subdirs[:] = [d for d in subdirs if d not in config.excluded_dirs 
+                                and os.path.join(root, d) not in excluded_by_gitignore]
+
             for file in files:
-                if (any(file.endswith(ext) for ext in included_extensions) 
-                        and not any(file.startswith(ext) for ext in excluded_files)):
-                    file_path = os.path.join(root, file)
+                file_path = os.path.join(root, file)
+                if not gitignore_spec.match_file(file_path) and \
+                   (any(file.endswith(ext) for ext in config.included_extensions) and \
+                    not any(file.startswith(ext) for ext in config.excluded_files)):
                     directory = os.path.dirname(file_path)
                     if directory not in directory_map:
                         directory_map[directory] = []

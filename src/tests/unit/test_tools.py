@@ -66,6 +66,41 @@ def test_discover_files(mock_walk):
     mock_walk.assert_called_once_with(repo_path)
 
 
+@patch("llms_gen_agent.tools.setup_config")
+@patch("os.walk")
+@patch("builtins.open", new_callable=mock_open, read_data="*.log\n__pycache__/\n")
+@patch("os.path.exists", return_value=True)
+def test_discover_files_with_exclusions(mock_exists, mock_open, mock_walk, mock_setup_config):
+    """Tests the discover_files function with various exclusion scenarios."""
+    # Arrange: Mock the config
+    mock_config = MagicMock()
+    mock_config.excluded_dirs = {'.git', '.venv'}
+    mock_config.excluded_files = {'__init__.py'}
+    mock_config.included_extensions = {'.md', '.py'}
+    mock_setup_config.return_value = mock_config
+
+    # Arrange: Set up the mock for os.walk
+    repo_path = "/fake/repo"
+    mock_walk.return_value = [
+        ("/fake/repo", ["docs", ".git", "__pycache__"], ["README.md", "main.py", "test.log"]),
+        ("/fake/repo/docs", [], ["guide.md", "__init__.py"]),
+    ]
+    tool_context = MagicMock()
+    tool_context.state = {}
+
+    # Act
+    result = discover_files(repo_path, tool_context)
+
+    # Assert
+    expected_files = ["/fake/repo/README.md", "/fake/repo/main.py", "/fake/repo/docs/guide.md"]
+    assert result == {"status": "success", "files": expected_files}
+    assert tool_context.state["files"] == expected_files
+    assert tool_context.state["dirs"] == ["/fake/repo", "/fake/repo/docs"]
+    mock_walk.assert_called_once_with(repo_path)
+    mock_exists.assert_called_once_with(os.path.join(repo_path, ".gitignore"))
+    mock_open.assert_called_once_with(os.path.join(repo_path, ".gitignore"))
+
+
 @patch("builtins.open", new_callable=mock_open, read_data='[remote "origin"]\nurl = https://github.com/owner/repo_name.git')
 @patch("os.getcwd", return_value="/fake/cwd")
 @patch("os.makedirs")

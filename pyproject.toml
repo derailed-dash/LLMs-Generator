@@ -12,6 +12,7 @@ dependencies = [
     "google-cloud-aiplatform[adk,evaluation,agent_engines]",
     "python-dotenv",
     "langchain-community",
+    "pathspec",
     # Web framework
     "fastapi~=0.115.14",
     "uvicorn~=0.34.3", # means >= 0.34.3 but < 0.35
