@@ -1,6 +1,6 @@
 {
   "context": {
-    "includeDirectories": ["/home/darren/localdev/gcp/adk-docs"],
+    "includeDirectories": ["/home/darren/localdev/gcp/adk-docs", "/home/darren/localdev/gcp/adk-samples"],
     "loadFromIncludeDirectories": false
   }
 }
