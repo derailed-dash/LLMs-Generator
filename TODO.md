@@ -27,6 +27,7 @@
 - [x] Replace LangChain File Read tool with custom tool; eliminate need for callback.
 - [x] Make repo public.
 - [x] Write blog.
+- [x] Add Gemini CLI GitHub workflows.
 - [x] Don't assume remote GitHub repo path matches local path.
 - [x] Perform project review.
 - [x] Increase test coverage by adding unit tests for the agents and other utility functions.
