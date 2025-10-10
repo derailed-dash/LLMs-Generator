@@ -38,3 +38,4 @@
 - [ ] Consider using ADK artifacts rather than storing file contents in session state. See [ADK Artififacts](https://google.github.io/adk-docs/artifacts/)
 - [ ] Make the solution iterate, e.g. if output is incomplete, or nearing filling context window.
 - [ ] Allow configurable section depth when creating the `llms.txt`, using `.env` and `Config`
+- [ ] Introduce agent evaluation

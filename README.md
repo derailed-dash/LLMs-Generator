@@ -102,7 +102,7 @@ BACKOFF_MULTIPLIER=2 # exponential delay growth
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/AnswerDotAI/llms-generator.git
+    git clone https://github.com/derailed-dash/llms-generator.git
     cd llms-generator
     ```
 2.  **Set up your environment:**
@@ -145,10 +145,6 @@ llms-gen --repo-path "/home/darren/localdev/gcp/adk-docs"
 
 *   `--output-path` / `-o`: The absolute path to save the `llms.txt` file. If not specified, it will be saved in a `temp` directory in the current working directory.
 *   `--log-level` / `-l`: Set the log level for the application (e.g., `DEBUG`, `INFO`, `WARNING`, `ERROR`). This will override any `LOG_LEVEL` environment variable.
-
-## Associated Articles
-
-Coming soon
 
 ## Useful Commands
 
