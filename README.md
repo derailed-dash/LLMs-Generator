@@ -49,6 +49,7 @@ It is easy to provide an agent with the ability to consume an `llms.txt` file wi
 - [Give Your AI Agents Deep Understanding With LLMS.txt](https://medium.com/google-cloud/give-your-ai-agents-deep-understanding-with-llms-txt-4f948590332b)
 - [Give Your AI Agents Deep Understanding - Creating the LLMS.txt with a Multi-Agent ADK Solution - Coming Soon](tbd)
 - [ADK Docs Extension for Gemini CLI](https://github.com/derailed-dash/adk-docs-ext)
+- [Agent Patterns](https://cloud.google.com/architecture/choose-design-pattern-agentic-ai-system)
 
 ## Solution Design
 
