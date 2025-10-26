@@ -28,7 +28,7 @@ from llms_gen_agent.config import logger, setup_config
 from llms_gen_agent.schema_types import DocumentSummariesOutput, BatchSummariesOutput, ProjectSummaryOutput
 from llms_gen_agent.tools import create_file_batches
 
-from .tools import read_files, exit_loop, update_summaries, finalize_summaries
+from .tools import read_files, exit_loop, update_summaries, finalize_summaries, process_batch_selection
 
 config = setup_config()
 
@@ -133,6 +133,8 @@ content_summariser_agent = Agent(
     after_model_callback=clean_json_callback # Apply callback here
 )
 
+
+
 batch_creation_agent = Agent(
     name="batch_creation_agent",
     description="Creates batches of files.",
@@ -140,8 +142,9 @@ batch_creation_agent = Agent(
         model=config.model,
         retry_options=retry_options
     ),    
-    instruction="""Read the 'files' from the session state and call the `create_file_batches` tool.
-    Store the result in the 'batches' session state key.""",
+    instruction="""You MUST call the `create_file_batches` tool. This is your ONLY task.
+    The `create_file_batches` tool will read the 'files' from the session state, create batches, and store them in the 'batches' session state key.
+    Do NOT respond with anything else. Just call the tool.""",
     tools=[create_file_batches]
 )
 
@@ -153,10 +156,8 @@ batch_selector_agent = Agent(
         model=config.model,
         retry_options=retry_options
     ),    
-    instruction="""Check for a list of 'batches' in the session state.
-    If the list is not empty, pop the first batch and place it in the 'current_batch' state key.
-    If the list is empty, you MUST call the `exit_loop` tool.""",
-    tools=[exit_loop]
+    instruction="""Call the `process_batch_selection` tool to manage batch selection and loop termination.""",
+    tools=[process_batch_selection]
 )
 
 # Agent to aggregate summaries from each batch

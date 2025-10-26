@@ -61,6 +61,30 @@ def read_files(tool_context: ToolContext) -> dict:
     return response
 
 
+def process_batch_selection(tool_context: ToolContext) -> dict:
+    """Manages the batch selection for the loop, increments iteration counter, and logs batch info."""
+    logger.debug("Executing process_batch_selection")
+    
+    batches = tool_context.state.get("batches", [])
+    loop_iteration = tool_context.state.get("loop_iteration", 0)
+    
+    if not batches:
+        logger.debug("No more batches to process. Exiting loop.")
+        tool_context.actions.escalate = True # Signal to exit the loop
+        return {"status": "no_more_batches"}
+    
+    current_batch = batches.pop(0) # Get the next batch
+    tool_context.state["batches"] = batches # Update batches in state
+    tool_context.state["current_batch"] = current_batch # Set current batch
+    
+    loop_iteration += 1
+    tool_context.state["loop_iteration"] = loop_iteration
+    
+    logger.debug(f"Processing batch {loop_iteration}. Files in batch: {len(current_batch)}. Remaining batches: {len(batches)}")
+    
+    return {"status": "batch_selected", "loop_iteration": loop_iteration, "files_in_batch": len(current_batch)}
+
+
 def exit_loop(tool_context: ToolContext) -> None:
     """A special tool that signals the LoopAgent to terminate the loop."""
     tool_context.actions.escalate = True
@@ -68,11 +92,16 @@ def exit_loop(tool_context: ToolContext) -> None:
 def update_summaries(tool_context: ToolContext) -> dict:
     """Merges the batch_summaries into the all_summaries in the session state."""
     logger.debug("Executing update_summaries")
-    batch_summaries = tool_context.state.get("batch_summaries", {})
+    
+    batch_summaries_output = tool_context.state.get("batch_summaries", {})
+    batch_summaries = batch_summaries_output.get("batch_summaries", {}) # Get the actual dict from the output_key
+    
     if "all_summaries" not in tool_context.state:
         tool_context.state["all_summaries"] = {}
     
-    tool_context.state["all_summaries"].update(batch_summaries.get("batch_summaries", {}))
+    tool_context.state["all_summaries"].update(batch_summaries)
+    
+    logger.debug(f"Merged {len(batch_summaries)} summaries from current batch. Total summaries collected: {len(tool_context.state['all_summaries'])}")
     
     return {"status": "success"}
 

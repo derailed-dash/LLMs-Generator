@@ -39,12 +39,18 @@ def _get_gitignore(repo_path: str) -> pathspec.PathSpec:
     return pathspec.PathSpec.from_lines('gitwildmatch', patterns)
 
 
-def create_file_batches(file_paths: List[str], batch_size: int = 10) -> List[List[str]]:
+def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> List[List[str]]:
     """Splits a list of file paths into batches of a specified size."""
+    file_paths = tool_context.state.get("files", [])
+    logger.debug(f"Creating batches for {len(file_paths)} files with batch size {batch_size}")
     if not file_paths:
+        logger.debug("No files to batch.")
         return []
     num_batches = math.ceil(len(file_paths) / batch_size)
-    return [file_paths[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
+    batches = [file_paths[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
+    logger.debug(f"Created {len(batches)} batches.")
+    tool_context.state["batches"] = batches # Store batches in session state
+    return batches
 
 
 def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
