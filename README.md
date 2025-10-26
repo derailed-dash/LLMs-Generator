@@ -25,7 +25,7 @@ Author: Darren Lester
 
 ## Repo Overview
 
-_LLMS-Generator_ is an agentic solution designed to create a `llms.txt` file for any given repo or folder.
+_LLMS-Generator_ is an agentic solution designed to create a `llms.txt` file for any given repo or folder. It intelligently processes large codebases by batching files and iteratively summarizing them to overcome model context limitations.
 
 The `llms.txt` file is an AI/LLM-friendly markdown file that enables an AI to understand the purpose of the a repo, as well as have a full understanding of the repo site map and the purpose of each file it finds. This is particularly useful when providing AIs (like Gemini) access to documentation repos.
 

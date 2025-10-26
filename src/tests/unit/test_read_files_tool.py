@@ -83,27 +83,3 @@ def test_read_files_unicode_decode_error():
     # Assert: Check that an appropriate error message was stored in the tool context.
     assert "Error: Could not read file" in tool_context.state["files_content"]["/fake/bad_encoding.txt"]
 
-def test_read_files_max_files_limit():
-    """Tests that read_files respects the max_files_to_process configuration limit."""
-    # Arrange: Set up a mock ToolContext with more files than the configured limit.
-    tool_context = MagicMock()
-    tool_context.state = {"files": ["/fake/file1.txt", "/fake/file2.txt", "/fake/file3.txt"]}
-    
-    # Arrange: Mock the configuration to set a specific file processing limit.
-    with patch("llms_gen_agent.sub_agents.doc_summariser.tools.setup_config") as mock_setup_config:
-        mock_config = MagicMock()
-        mock_config.max_files_to_process = 2
-        mock_setup_config.return_value = mock_config
-
-        # Arrange: Mock the 'open' function.
-        m = mock_open(read_data="file content")
-        with patch("builtins.open", m):
-            # Act: Call the function under test.
-            result = read_files(tool_context)
-
-    # Assert: Verify that the function returns a success status.
-    assert result == {"status": "success"}
-    # Assert: Check that the number of processed files matches the limit.
-    assert len(tool_context.state["files_content"]) == 2
-    # Assert: Ensure that files beyond the limit were not processed.
-    assert "/fake/file3.txt" not in tool_context.state["files_content"]

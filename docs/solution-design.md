@@ -40,12 +40,21 @@ The solution design below shows component interactions, and the arrow labels sho
 
 ![Solution Design Diagram](generate-llms-adk.drawio.png)
 
-- **Sub-Agents:** The `document_summariser_agent` is a `SequentialAgent` that composes the `file_reader_agent` and `content_summariser_agent`, demonstrating a modular, multi-agent approach.
+- **Sub-Agents:** The `document_summariser_agent` is a `SequentialAgent` that orchestrates a complex workflow involving batching, looping, and aggregation. It composes several sub-agents:
+  - `batch_creation_agent`: Creates batches of files.
+  - `batch_processing_loop`: A `LoopAgent` that iteratively processes each batch.
+  - `project_summariser_agent`: Generates the overall project summary.
+  - `final_summary_agent`: Combines all summaries into the final output format.
 
 - **Tools:** The system relies on a set of tools to interact with the file system and process data:
   - `discover_files`: Scans the repository to find files.
-  - `adk_file_read_tool`: Reads the content of a file.
+  - `create_file_batches`: Splits the discovered files into manageable batches.
+  - `read_files`: Reads the content of files for summarization.
+  - `update_summaries`: Merges batch summaries into a master list.
+  - `finalize_summaries`: Combines all summaries and the project summary into the final output.
   - `generate_llms_txt`: Writes the final `llms.txt` file.
+
+**Note:** The `generate-llms-adk.drawio.png` diagram needs to be updated to reflect the new architecture.
 
 - **Configuration:** Application configuration is managed through a `.env` file and environment variables, loaded by `src/llms_gen_agent/config.py`.
 
@@ -58,8 +67,12 @@ The solution design below shows component interactions, and the arrow labels sho
 - **Agent-Based Architecture (`google-adk`):**
   - **Rationale:** This provides a modular and extensible framework. By breaking down the logic into independent agents and tools, the system is easier to develop, test, and maintain. It also allows for the orchestration of complex workflows by the LLM.
 
-- **Sequential Agent for Summarisation:**
-  - **Rationale:** The summarisation process is naturally a two-step sequence: read all files, then summarize them. Using a `SequentialAgent` ensures this order of operations, leading to a more reliable and predictable workflow.
+- **Sequential Agent for Summarisation (with Batching and Looping):**
+  - **Rationale:** The summarization process for potentially large codebases is now handled by a sophisticated `SequentialAgent` (`document_summariser_agent`) that orchestrates a multi-step workflow. This workflow involves:
+    1.  **Batching:** Files are split into smaller, manageable batches to prevent exceeding LLM context windows.
+    2.  **Iterative Processing:** A `LoopAgent` processes each batch sequentially, ensuring all files are summarized.
+    3.  **Aggregation:** Summaries from individual batches are collected and merged into a comprehensive list.
+    This approach ensures a reliable, predictable, and scalable summarization process, even for extensive repositories.
 
 - **Command Line Interface with `Typer`:**
   - **Rationale:** A CLI is a standard and efficient interface for a developer-focused tool. The `Typer` package simplifies the creation of a clean and professional CLI, complete with automatic help generation and argument parsing.
@@ -76,9 +89,17 @@ The solution design below shows component interactions, and the arrow labels sho
   1. The user runs the `llms-gen` command from the CLI, providing the repository path.
   2. The CLI invokes the `runner.py` script, which sets up the ADK `Runner` and `Session` and starts the `generate_llms_coordinator` agent.
   3. The `generate_llms_coordinator` agent executes the following sequence:
-     a. It calls the `discover_files` tool to get a list of all relevant file paths in the repository.
+     a. It calls the `discover_files` tool to get a list of all relevant file paths in the repository. The discovered files are stored in the session state.
      b. It delegates the summarization task to the `document_summariser_agent`.
-     c. The `document_summariser_agent` (a `SequentialAgent`) first uses the `file_reader_agent` to read the content of all the files. The content is stored in the session state.
-     d. Next, the `content_summariser_agent` processes the file contents from the session state, generating a summary for each file and an overall project summary. A callback (`clean_json_callback`) is used to clean the LLM's JSON output.
-     e. The `generate_llms_coordinator` receives the summaries from the sub-agent.
-     f. Finally, it calls the `generate_llms_txt` tool to write the final `llms.txt` file.
+     c. The `document_summariser_agent` (a `SequentialAgent`) orchestrates the following steps:
+        i.  The `batch_creation_agent` calls the `create_file_batches` tool to split the discovered files into batches and stores them in the session state.
+        ii. The `batch_processing_loop` (a `LoopAgent`) then iteratively processes each batch:
+            - The `batch_selector_agent` retrieves the next batch from the session state. If no more batches, it signals to exit the loop.
+            - The `single_batch_processor` (a `SequentialAgent`) then processes the current batch:
+                - The `file_reader_agent` reads the content of the files in the current batch. The content is stored in the session state.
+                - The `content_summariser_agent` processes the file contents from the session state, generating a summary for each file in the batch.
+                - The `update_summaries_agent` merges these batch summaries into a master `all_summaries` list in the session state.
+        iii. After the loop completes, the `project_summariser_agent` reads the `all_summaries` and the project's `README.md` (if available) from the session state, and generates a high-level project summary.
+        iv. The `final_summary_agent` combines the `all_summaries` and the generated project summary into the final `doc_summaries` format in the session state.
+     d. The `generate_llms_coordinator` receives the final `doc_summaries` from the `document_summariser_agent`.
+     e. Finally, it calls the `generate_llms_txt` tool to write the final `llms.txt` file using the collected summaries.
