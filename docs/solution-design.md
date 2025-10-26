@@ -50,7 +50,6 @@ The solution design below shows component interactions, and the arrow labels sho
   - `discover_files`: Scans the repository to find files.
   - `create_file_batches`: Splits the discovered files into manageable batches.
   - `read_files`: Reads the content of files for summarization.
-  - `exit_loop`: Signals the `LoopAgent` to terminate.
   - `update_summaries`: Merges batch summaries into a master list.
   - `finalize_summaries`: Combines all summaries and the project summary into the final output.
   - `generate_llms_txt`: Writes the final `llms.txt` file.

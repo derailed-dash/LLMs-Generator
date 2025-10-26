@@ -102,6 +102,12 @@ def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
 
         # Create a single list of all the files
         all_files = [file for files_list in directory_map.values() for file in files_list]
+        
+        # Apply MAX_FILES_TO_PROCESS limit
+        if config.max_files_to_process > 0:
+            logger.info(f"Limiting discovered files to {config.max_files_to_process}.")
+            all_files = all_files[:config.max_files_to_process]
+
         tool_context.state["files"] = all_files
         logger.debug("Files\n:" + "\n".join([str(file) for file in all_files]))
         logger.debug("Exiting discover_files.")

@@ -4,7 +4,6 @@ This module provides a collection of tools specifically designed for the `docume
 These tools facilitate various steps in the document summarization workflow, including:
 - `read_files`: Reads the content of specified files and stores them in the session state.
 - `process_batch_selection`: Manages the selection of file batches for iterative processing.
-- `exit_loop`: Signals the `LoopAgent` to terminate its execution.
 - `update_summaries`: Aggregates individual batch summaries into a comprehensive collection.
 - `finalize_summaries`: Combines all collected summaries and the project summary into the final output format.
 """
@@ -36,11 +35,6 @@ def read_files(tool_context: ToolContext) -> dict:
     # or in 'files' (for direct processing or initial setup).
     file_paths = tool_context.state.get("current_batch", tool_context.state.get("files", []))
     logger.debug(f"Got {len(file_paths)} files")
-
-    # Implement max files constraint
-    if config.max_files_to_process > 0:
-        logger.info(f"Limiting to {config.max_files_to_process} files")
-        file_paths = file_paths[:config.max_files_to_process]
 
     # Initialise our session state key    
     tool_context.state["files_content"] = {}
@@ -89,15 +83,6 @@ def process_batch_selection(tool_context: ToolContext) -> dict:
     logger.debug(f"Processing batch {loop_iteration}. Files in batch: {len(current_batch)}. Remaining batches: {len(batches)}")
     
     return {"status": "batch_selected", "loop_iteration": loop_iteration, "files_in_batch": len(current_batch)}
-
-
-def exit_loop(tool_context: ToolContext) -> None:
-    """A special tool that signals the LoopAgent to terminate the loop.
-    
-    This tool is called by the `batch_selector_agent` when there are no more
-    batches to process, effectively stopping the `batch_processing_loop`.
-    """
-    tool_context.actions.escalate = True
 
 def update_summaries(tool_context: ToolContext) -> dict:
     """Merges the batch_summaries into the all_summaries in the session state.

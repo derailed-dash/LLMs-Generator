@@ -29,7 +29,7 @@ from llms_gen_agent.config import logger, setup_config
 from llms_gen_agent.schema_types import DocumentSummariesOutput, BatchSummariesOutput, ProjectSummaryOutput
 from llms_gen_agent.tools import create_file_batches
 
-from .tools import read_files, exit_loop, update_summaries, finalize_summaries, process_batch_selection
+from .tools import read_files, update_summaries, finalize_summaries, process_batch_selection
 
 config = setup_config()
 

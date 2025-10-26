@@ -73,11 +73,14 @@ def test_discover_files(mock_walk):
 def test_discover_files_with_exclusions(mock_exists, mock_open, mock_walk, mock_setup_config):
     """Tests the discover_files function with various exclusion scenarios."""
     # Arrange: Mock the config
-    mock_config = MagicMock()
-    mock_config.excluded_dirs = {'.git', '.venv'}
-    mock_config.excluded_files = {'__init__.py'}
-    mock_config.included_extensions = {'.md', '.py'}
-    mock_setup_config.return_value = mock_config
+    class MockConfig:
+        def __init__(self):
+            self.excluded_dirs = {'.git', '.venv'}
+            self.excluded_files = {'__init__.py'}
+            self.included_extensions = {'.md', '.py'}
+            self.max_files_to_process = 0 # Default to no limit for this test
+
+    mock_setup_config.return_value = MockConfig()
 
     # Arrange: Set up the mock for os.walk
     repo_path = "/fake/repo"
@@ -99,6 +102,37 @@ def test_discover_files_with_exclusions(mock_exists, mock_open, mock_walk, mock_
     mock_walk.assert_called_once_with(repo_path)
     mock_exists.assert_called_once_with(os.path.join(repo_path, ".gitignore"))
     mock_open.assert_called_once_with(os.path.join(repo_path, ".gitignore"))
+
+
+@patch("llms_gen_agent.tools.setup_config")
+@patch("os.walk")
+def test_discover_files_max_files_limit_applied(mock_walk, mock_setup_config):
+    """Tests that discover_files applies the MAX_FILES_TO_PROCESS limit."""
+    # Arrange: Mock the config
+    class MockConfig:
+        def __init__(self):
+            self.excluded_dirs = set()
+            self.excluded_files = set()
+            self.included_extensions = {'.md'}
+            self.max_files_to_process = 2 # Set a limit
+    mock_setup_config.return_value = MockConfig()
+
+    # Arrange: Set up the mock for os.walk to return more files than the limit
+    repo_path = "/fake/repo"
+    mock_walk.return_value = [
+        ("/fake/repo", [], ["file1.md", "file2.md", "file3.md"]),
+    ]
+    tool_context = MagicMock()
+    tool_context.state = {}
+
+    # Act
+    result = discover_files(repo_path, tool_context)
+
+    # Assert
+    expected_files = ["/fake/repo/file1.md", "/fake/repo/file2.md"]
+    assert result == {"status": "success", "files": expected_files}
+    assert tool_context.state["files"] == expected_files
+    assert len(tool_context.state["files"]) == mock_setup_config.return_value.max_files_to_process
 
 
 @patch("builtins.open", new_callable=mock_open, read_data='[remote "origin"]\nurl = https://github.com/owner/repo_name.git')
