@@ -52,6 +52,7 @@ def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> List
     logger.debug(f"Creating batches for {len(file_paths)} files with batch size {batch_size}")
     if not file_paths:
         logger.debug("No files to batch.")
+        tool_context.state["batches"] = [] # Ensure batches is set even if empty
         return []
     num_batches = math.ceil(len(file_paths) / batch_size)
     batches = [file_paths[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]

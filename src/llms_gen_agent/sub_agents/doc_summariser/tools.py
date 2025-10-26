@@ -32,8 +32,9 @@ def read_files(tool_context: ToolContext) -> dict:
     logger.debug("Executing read_files")
     config = setup_config() # dynamically load config
     
-    # The files to read are now in the 'current_batch' in session state
-    file_paths = tool_context.state.get("current_batch", [])
+    # The files to read are either in 'current_batch' (for batched processing)
+    # or in 'files' (for direct processing or initial setup).
+    file_paths = tool_context.state.get("current_batch", tool_context.state.get("files", []))
     logger.debug(f"Got {len(file_paths)} files")
 
     # Implement max files constraint
