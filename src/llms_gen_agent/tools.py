@@ -1,14 +1,15 @@
 """
 This module provides a collection of tools for the LLMS-Generator agent.
 
-The tools are designed to facilitate the discovery of files within a given repository, 
-and generate a structured `llms.txt` sitemap file based on the findings.
+These tools are designed to facilitate various operations within the LLMS-Generator workflow,
+including file discovery, batch processing, and the final generation of the `llms.txt` sitemap file.
 
 Key functionalities include:
-- `discover_files`: Scans a repository to find relevant files (e.g. markdown and python files),
-  excluding common temporary or git-related directories.
+- `create_file_batches`: Splits a list of file paths into smaller, manageable batches for processing.
+- `discover_files`: Scans a repository to find relevant files (e.g., markdown and Python files),
+  excluding common temporary or Git-related directories.
 - `generate_llms_txt`: Constructs the `llms.txt` Markdown file, organizing
-  discovered files into sections with summaries.
+  discovered files into sections with their generated summaries and a project-level summary.
 """
 import configparser
 import os
@@ -40,7 +41,12 @@ def _get_gitignore(repo_path: str) -> pathspec.PathSpec:
 
 
 def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> List[List[str]]:
-    """Splits a list of file paths into batches of a specified size."""
+    """Splits a list of file paths into batches of a specified size.
+    
+    This tool retrieves the list of all discovered files from the session state,
+    divides them into smaller batches, and stores these batches back into the
+    session state for iterative processing by the LoopAgent.
+    """
     file_paths = tool_context.state.get("files", [])
     logger.debug(f"create_file_batches: Received {len(file_paths)} files from session state.")
     logger.debug(f"Creating batches for {len(file_paths)} files with batch size {batch_size}")
@@ -55,8 +61,11 @@ def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> List
 
 
 def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
-    """Discovers all relevant files in the repository and returns a list of file paths.
-    We exclude directories and files specified in the .env, and which are included in the .gitignore.
+    """Discovers all relevant files in the repository and stores their paths in the session state.
+
+    This tool scans the specified repository, identifies files relevant for summarization
+    (based on configured extensions), and excludes directories and files specified in
+    `.env` and `.gitignore`. The discovered file paths are stored in `tool_context.state["files"]`.
 
     Args:
         repo_path: The absolute path to the repository to scan.
@@ -207,20 +216,18 @@ def _write_llms_txt_section(f, directory: str,
 def generate_llms_txt(repo_path: str, tool_context: ToolContext, output_path: str = "") -> dict:
     """Generates a comprehensive llms.txt sitemap file for a given repository.
 
-    This function orchestrates the creation of an AI/LLM-friendly Markdown file (`llms.txt`) 
-    that provides a structured overview of the repository's contents. It includes a project summary, 
-    and organizes files into sections based on their directory structure, with a configurable maximum section depth.
-
-    For each file, it generates a Markdown link with its summary. If a summary is not available, 
-    "No summary" is used as a placeholder. Links are generated as GitHub URLs if the repository is 
-    detected as a Git repository, otherwise, relative local paths are used.
+    This tool orchestrates the creation of an AI/LLM-friendly Markdown file (`llms.txt`)
+    that provides a structured overview of the repository's contents. It retrieves
+    the project summary and individual file summaries from the session state,
+    organizes files into sections based on their directory structure, and
+    generates Markdown links with their respective summaries.
 
     Args:
         repo_path: The absolute path to the root of the repository to scan.
-        output_path: Optional. The absolute path to save the llms.txt file. 
+        output_path: Optional. The absolute path to save the llms.txt file.
                      If not provided, it will be saved in a `temp` directory in the current working directory.
 
-    Other required data is retrieved from tool_context.
+    Other required data (summaries, file lists) is retrieved from tool_context.state.
 
     Returns:
         A dictionary with:

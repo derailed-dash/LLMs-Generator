@@ -32,8 +32,9 @@
 - [x] Perform project review.
 - [x] Increase test coverage by adding unit tests for the agents and other utility functions.
 - [x] Make sure it can work with remote GitHub repos as well as local.
-- [ ] To avoid exceeding the context window, we should split the input into batches and iterate,
+- [x] To avoid exceeding the context window, we should split the input into batches and iterate,
       possibly using the [loop pattern](https://cloud.google.com/architecture/choose-design-pattern-agentic-ai-system#loop-pattern)
+- [ ] Introduce a quality checker to fill in any missing summaries.
 - [ ] Add integration tests to test the end-to-end functionality of the agent.
 - [x] Make the list of excluded directories in `discover_files` configurable, in a deterministic way.
 - [x] Exclude also based on .gitignore.

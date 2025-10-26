@@ -1,19 +1,20 @@
 """
-Defines a sequential agent responsible for summarizing documents.
+This module defines the `document_summariser_agent`, a sophisticated `SequentialAgent`
+responsible for orchestrating the summarization of a collection of files within a repository.
 
-This module contains the `document_summariser_agent`, a `SequentialAgent` that orchestrates 
-a two-step process to read and summarize a collection of files.
+The agent implements a batch-processing and looping mechanism to handle large numbers of files
+efficiently, overcoming potential model context limitations.
 
-The process is as follows:
-1.  **File Reading:** The `file_reader_agent` reads the content of specified files, 
-    storing the content in the session state.
-2.  **Content Summarization:** The `content_summariser_agent` takes the collected file content 
-    and performs two key tasks:
-    - It generates a concise summary for each individual file.
-    - It generates a higher-level summary for the entire project based on the content of all files.
-
-The final output is a single JSON object containing both the individual file summaries
-and the overall project summary.
+The overall process orchestrated by `document_summariser_agent` is as follows:
+1.  **Batch Creation:** Files discovered by a parent agent are split into manageable batches.
+2.  **Iterative Batch Processing:** Each batch is processed in a loop, where:
+    a.  Files within the current batch are read.
+    b.  Individual summaries are generated for each file in the batch.
+    c.  These batch summaries are aggregated into a master list of all summaries.
+3.  **Project Summarization:** After all batches are processed, a high-level project summary
+    is generated based on the aggregated file summaries and the project's README.md (if available).
+4.  **Finalization:** All individual and project summaries are combined into a single,
+    structured output format for consumption by other tools.
 """
 import re
 
@@ -77,6 +78,7 @@ def clean_json_callback(
 
     return llm_response # Return the original response if no changes or not applicable
 
+# This agent reads the files from the 'current_batch' in session state.
 file_reader_agent = Agent(
     name="file_reader_agent",
     description="An agent that reads the content of multiple files and stores them in session state.",
@@ -94,11 +96,14 @@ file_reader_agent = Agent(
 )
 
 content_summariser_prompt = """You are an expert summariser.
-Your task is to summarize EACH individual file's content in three sentences or fewer.
-- Do NOT start summaries with text like "This document is about...".
+Your task is to summarise EACH individual file's content in no more than four sentences.
+The summary should reference any key concepts, classes, best practices, etc.
+- Do NOT start summaries with text like "This document is about..." or "This page introduces..."
   Just immediately describe the content. E.g.
-  Rather than this: "This document explains how to configure streaming behavior..."
-  Say this: "Explains how to configure streaming behavior..."
+  - Rather than this: "This document explains how to configure streaming behavior..."
+    Say this: "Explains how to configure streaming behavior..."
+  - Rather than this: "This page introduces an agentic framework for..."
+    Say this: "Introduces an agentic framework for..."
 - If you cannot generate a meaningful summary, use 'No meaningful summary available.' as its summary.
 
 The final output MUST be a JSON object with a single top-level key called 'batch_summaries', which contains a dictionary of file paths to summaries.
@@ -115,6 +120,7 @@ FILE CONTENTS END:
 Now return the JSON object.
 """
 
+# This agent summarizes the content of files in the current batch.
 content_summariser_agent = Agent(
     name="content_summarizer_agent",
     description="An agent that summarizes collected file contents and aggregates them.",
@@ -133,8 +139,7 @@ content_summariser_agent = Agent(
     after_model_callback=clean_json_callback # Apply callback here
 )
 
-
-
+# This agent is responsible for initially splitting all discovered files into batches.
 batch_creation_agent = Agent(
     name="batch_creation_agent",
     description="Creates batches of files.",
@@ -202,7 +207,7 @@ single_batch_processor = SequentialAgent(
     ]
 )
 
-# This agent loops through all batches
+# This LoopAgent iteratively processes each batch of files until all are summarized.
 batch_processing_loop = LoopAgent(
     name="batch_processing_loop",
     description="Processes all file batches in a loop.",
@@ -213,6 +218,7 @@ batch_processing_loop = LoopAgent(
     max_iterations=200 # A safeguard against infinite loops
 )
 
+# This agent combines all collected summaries and the project summary into the final output.
 final_summary_agent = Agent(
     name="final_summary_agent",
     description="Finalizes the document summaries by combining all individual and project summaries.",
@@ -224,14 +230,14 @@ final_summary_agent = Agent(
     tools=[finalize_summaries]
 )
 
-# This is the new main entry point for summarization
+# This is the main document summarizer agent, orchestrating the entire process.
 document_summariser_agent = SequentialAgent(
     name="document_summariser_agent",
     description="Orchestrates the entire file summarization process including batching and looping.",
     sub_agents=[
-        batch_creation_agent,
-        batch_processing_loop,
-        project_summariser_agent,
-        final_summary_agent
+        batch_creation_agent, # Step 1: Create batches of files
+        batch_processing_loop, # Step 2: Process each batch in a loop
+        project_summariser_agent, # Step 3: Generate overall project summary
+        final_summary_agent # Step 4: Finalize and combine all summaries
     ]
 )
