@@ -13,6 +13,8 @@ Key functionalities include:
 import configparser
 import os
 import re
+import math
+from typing import List
 
 import pathspec
 from google.adk.tools import ToolContext
@@ -35,6 +37,14 @@ def _get_gitignore(repo_path: str) -> pathspec.PathSpec:
         with open(gitignore_path) as f:
             patterns = f.read().splitlines()
     return pathspec.PathSpec.from_lines('gitwildmatch', patterns)
+
+
+def create_file_batches(file_paths: List[str], batch_size: int = 10) -> List[List[str]]:
+    """Splits a list of file paths into batches of a specified size."""
+    if not file_paths:
+        return []
+    num_batches = math.ceil(len(file_paths) / batch_size)
+    return [file_paths[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
 
 
 def discover_files(repo_path: str, tool_context: ToolContext) -> dict:

@@ -17,16 +17,18 @@ and the overall project summary.
 """
 import re
 
-from google.adk.agents import Agent, SequentialAgent
+from google.adk.agents import Agent, SequentialAgent, LoopAgent
+from google.adk.tools import FunctionTool, AgentTool
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_response import LlmResponse
 from google.genai.types import GenerateContentConfig, HttpRetryOptions, Part
 
 from llms_gen_agent.config import logger, setup_config
-from llms_gen_agent.schema_types import DocumentSummariesOutput
+from llms_gen_agent.schema_types import DocumentSummariesOutput, BatchSummariesOutput, ProjectSummaryOutput
+from llms_gen_agent.tools import create_file_batches
 
-from .tools import read_files
+from .tools import read_files, exit_loop, update_summaries, finalize_summaries
 
 config = setup_config()
 
@@ -91,47 +93,24 @@ file_reader_agent = Agent(
     ],
 )
 
-content_summariser_prompt = """You are an expert summariser. 
-You will summarise the contents of multiple files, and then you will summarise the overall project.
-You will do this work in two phase.
-
-# Phase 1: File Summarisation
-- Your task is to summarize EACH individual file's content in three sentences or fewer.
-- Do NOT start summaries with text like "This document is about" or "This document provides".
+content_summariser_prompt = """You are an expert summariser.
+Your task is to summarize EACH individual file's content in three sentences or fewer.
+- Do NOT start summaries with text like "This document is about...".
   Just immediately describe the content. E.g.
   Rather than this: "This document explains how to configure streaming behavior..."
   Say this: "Explains how to configure streaming behavior..."
-- If you cannot generate a meaningful summary for a file, use 'No meaningful summary available.' as its summary.
-- Aggregate ALL these individual summaries into a single JSON object.
+- If you cannot generate a meaningful summary, use 'No meaningful summary available.' as its summary.
 
-# Phase 2: Project Summarisation
-- After summarizing all the files, you MUST also provide an overall project summary, in two or three paragraphs. 
-- The project summary should be a high-level overview of the repository/folder, based on the content of the files.
-- Focus on the content that is helpful for understanding the purpose of the project and the core components.
-- The project summary MUST be stored in the same output JSON object with the key 'project'. 
-  This is CRITICAL for the overall understanding of the repository.
+The final output MUST be a JSON object with a single top-level key called 'batch_summaries', which contains a dictionary of file paths to summaries.
+Example: {"batch_summaries": {"/path/to/file1.md":"Summary of file 1.", "/path/to/file2.md":"Summary of file 2."}}
 
-# Output Format
-- The JSON object MUST have a single top-level key called 'summaries', which contains a dictionary.
-- The dictionary contains all the summaries as key:value pairs.
-- For the file summaries: the dictionary keys are the original file paths and values are their respective summaries.
-- For the project summary: the key is `project`. THIS KEY MUST BE PRESENT. The value is the project summary. 
-- Example: 
-  {{"summaries": {{"/path/to/file1.md":"Summary of file 1.", 
-                   "/path/to/file2.md":"Summary of file 2.",
-                   "/path/to/file3.py":"Summary of python file."
-                   "project":"Summary of the project."}} }}
-
-IMPORTANT: Your final response MUST contain ONLY this JSON object. 
+IMPORTANT: Your final response MUST contain ONLY this JSON object.
 DO NOT include any other text, explanations, or markdown code block delimiters.
 
-Now I will provide you with the contents of multiple files. 
-Note that each file has a unique path and associated content.
-
-**FILE CONTENTS START:**
+FILE CONTENTS START:
 {files_content}
 ---
-**FILE CONTENTS END:**
+FILE CONTENTS END:
 
 Now return the JSON object.
 """
@@ -149,16 +128,109 @@ content_summariser_agent = Agent(
         top_p=1,
         max_output_tokens=64000
     ),
-    output_schema=DocumentSummariesOutput, # This is the final output schema
-    output_key="doc_summaries", # json with top level called 'summaries'
+    output_schema=BatchSummariesOutput, # This is the final output schema
+    output_key="batch_summaries", # json with top level called 'batch_summaries'
     after_model_callback=clean_json_callback # Apply callback here
 )
 
+batch_creation_agent = Agent(
+    name="batch_creation_agent",
+    description="Creates batches of files.",
+    model=Gemini(
+        model=config.model,
+        retry_options=retry_options
+    ),    
+    instruction="""Read the 'files' from the session state and call the `create_file_batches` tool.
+    Store the result in the 'batches' session state key.""",
+    tools=[create_file_batches]
+)
+
+# Agent to select the next batch or exit the loop
+batch_selector_agent = Agent(
+    name="batch_selector_agent",
+    description="Selects the next batch of files to process or exits the loop.",
+    model=Gemini(
+        model=config.model,
+        retry_options=retry_options
+    ),    
+    instruction="""Check for a list of 'batches' in the session state.
+    If the list is not empty, pop the first batch and place it in the 'current_batch' state key.
+    If the list is empty, you MUST call the `exit_loop` tool.""",
+    tools=[exit_loop]
+)
+
+# Agent to aggregate summaries from each batch
+update_summaries_agent = Agent(
+    name="update_summaries_agent",
+    description="Appends the latest batch summaries to the main summary list.",
+    model=Gemini(
+        model=config.model,
+        retry_options=retry_options
+    ),    
+    instruction="""You MUST call the `update_summaries` tool. This is your ONLY task.
+    The `update_summaries` tool will merge the 'batch_summaries' from the session state into the 'all_summaries' dictionary in the session state.
+    Do NOT respond with anything else. Just call the tool.""",
+    tools=[update_summaries]
+)
+
+# Agent to create the final project summary after the loop
+project_summariser_agent = Agent(
+    name="project_summariser_agent",
+    description="Creates the final project summary from all file summaries.",
+    model=Gemini(
+        model=config.model,
+        retry_options=retry_options
+    ),    
+    instruction="""Read the content of the project's README.md file (if available in session state as 'readme_content').
+    Then, review the 'all_summaries' from the session state.
+    Generate a two-paragraph summary of the entire project based on these inputs.
+    The output should be a JSON object with a single key 'project_summary' containing the generated summary.""",
+    tools=[read_files], # To read the README
+    output_schema=ProjectSummaryOutput,
+    output_key="project_summary_raw"
+)
+
+# This agent will process one batch sequentially
+single_batch_processor = SequentialAgent(
+    name="single_batch_processor",
+    description="Reads and summarizes one batch of files.",
+    sub_agents=[
+        file_reader_agent, # Reads files from 'current_batch'
+        content_summariser_agent, # Summarises files from 'current_batch'
+        update_summaries_agent # Appends batch summaries to 'all_summaries'
+    ]
+)
+
+# This agent loops through all batches
+batch_processing_loop = LoopAgent(
+    name="batch_processing_loop",
+    description="Processes all file batches in a loop.",
+    sub_agents=[
+        batch_selector_agent, # Gets next batch or exits
+        single_batch_processor
+    ],
+    max_iterations=200 # A safeguard against infinite loops
+)
+
+final_summary_agent = Agent(
+    name="final_summary_agent",
+    description="Finalizes the document summaries by combining all individual and project summaries.",
+    model=Gemini(
+        model=config.model,
+        retry_options=retry_options
+    ),    
+    instruction="""Call the `finalize_summaries` tool to combine all collected summaries and the project summary into the final output format.""",
+    tools=[finalize_summaries]
+)
+
+# This is the new main entry point for summarization
 document_summariser_agent = SequentialAgent(
     name="document_summariser_agent",
-    description="A sequential agent that first reads file contents and then summarizes them.",
+    description="Orchestrates the entire file summarization process including batching and looping.",
     sub_agents=[
-        file_reader_agent,
-        content_summariser_agent
+        batch_creation_agent,
+        batch_processing_loop,
+        project_summariser_agent,
+        final_summary_agent
     ]
 )

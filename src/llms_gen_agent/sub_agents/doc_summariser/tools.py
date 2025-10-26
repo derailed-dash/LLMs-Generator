@@ -59,3 +59,35 @@ def read_files(tool_context: ToolContext) -> dict:
                 response = {"status": "warnings"}
     
     return response
+
+
+def exit_loop(tool_context: ToolContext) -> None:
+    """A special tool that signals the LoopAgent to terminate the loop."""
+    tool_context.actions.escalate = True
+
+def update_summaries(tool_context: ToolContext) -> dict:
+    """Merges the batch_summaries into the all_summaries in the session state."""
+    logger.debug("Executing update_summaries")
+    batch_summaries = tool_context.state.get("batch_summaries", {})
+    if "all_summaries" not in tool_context.state:
+        tool_context.state["all_summaries"] = {}
+    
+    tool_context.state["all_summaries"].update(batch_summaries.get("batch_summaries", {}))
+    
+    return {"status": "success"}
+
+def finalize_summaries(tool_context: ToolContext) -> dict:
+    """Combines all individual file summaries and the project summary into the final doc_summaries format."""
+    logger.debug("Executing finalize_summaries")
+    all_summaries = tool_context.state.get("all_summaries", {})
+    project_summary_raw = tool_context.state.get("project_summary_raw", {}).get("project_summary", "No project summary found.")
+
+    final_doc_summaries = {
+        "summaries": {
+            **all_summaries,
+            "project": project_summary_raw
+        }
+    }
+    tool_context.state["doc_summaries"] = final_doc_summaries
+    
+    return {"status": "success"}

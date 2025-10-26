@@ -10,3 +10,13 @@ class DocumentSummariesOutput(BaseModel):
     summaries: dict[str, str] = Field(
         description="A dictionary where keys are file paths and values are their summaries."
     )
+
+class BatchSummariesOutput(BaseModel):
+    batch_summaries: dict[str, str] = Field(
+        description="A dictionary where keys are file paths and values are their summaries for a batch."
+    )
+
+class ProjectSummaryOutput(BaseModel):
+    project_summary: str = Field(
+        description="A two-paragraph summary of the entire project."
+    )
