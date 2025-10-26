@@ -42,6 +42,7 @@ def _get_gitignore(repo_path: str) -> pathspec.PathSpec:
 def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> List[List[str]]:
     """Splits a list of file paths into batches of a specified size."""
     file_paths = tool_context.state.get("files", [])
+    logger.debug(f"create_file_batches: Received {len(file_paths)} files from session state.")
     logger.debug(f"Creating batches for {len(file_paths)} files with batch size {batch_size}")
     if not file_paths:
         logger.debug("No files to batch.")
