@@ -27,9 +27,8 @@ from google.genai.types import GenerateContentConfig, HttpRetryOptions, Part
 
 from llms_gen_agent.config import logger, setup_config
 from llms_gen_agent.schema_types import DocumentSummariesOutput, BatchSummariesOutput, ProjectSummaryOutput
-from llms_gen_agent.tools import create_file_batches
 
-from .tools import read_files, update_summaries, finalize_summaries, process_batch_selection
+from .tools import create_file_batches, read_files, update_summaries, finalize_summaries, process_batch_selection
 
 config = setup_config()
 
@@ -230,7 +229,7 @@ final_summary_agent = Agent(
     tools=[finalize_summaries]
 )
 
-# This is the main document summarizer agent, orchestrating the entire process.
+# This is the main document summariser agent, orchestrating the entire process.
 document_summariser_agent = SequentialAgent(
     name="document_summariser_agent",
     description="Orchestrates the entire file summarization process including batching and looping.",

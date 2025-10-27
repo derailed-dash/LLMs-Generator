@@ -7,6 +7,7 @@ These tools facilitate various steps in the document summarization workflow, inc
 - `update_summaries`: Aggregates individual batch summaries into a comprehensive collection.
 - `finalize_summaries`: Combines all collected summaries and the project summary into the final output format.
 """
+import math
 from google.adk.tools import ToolContext
 
 from llms_gen_agent.config import logger, setup_config
@@ -59,6 +60,26 @@ def read_files(tool_context: ToolContext) -> dict:
                 response = {"status": "warnings"}
     
     return response
+
+def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> list[list[str]]:
+    """Splits a list of file paths into batches of a specified size.
+    
+    This tool retrieves the list of all discovered files from the session state,
+    divides them into smaller batches, and stores these batches back into the
+    session state for iterative processing by the LoopAgent.
+    """
+    file_paths = tool_context.state.get("files", [])
+    logger.debug(f"create_file_batches: Received {len(file_paths)} files from session state.")
+    logger.debug(f"Creating batches for {len(file_paths)} files with batch size {batch_size}")
+    if not file_paths:
+        logger.debug("No files to batch.")
+        tool_context.state["batches"] = [] # Ensure batches is set even if empty
+        return []
+    num_batches = math.ceil(len(file_paths) / batch_size)
+    batches = [file_paths[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
+    logger.debug(f"Created {len(batches)} batches.")
+    tool_context.state["batches"] = batches # Store batches in session state
+    return batches
 
 
 def process_batch_selection(tool_context: ToolContext) -> dict:

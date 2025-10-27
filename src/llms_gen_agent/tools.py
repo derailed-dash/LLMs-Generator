@@ -14,8 +14,6 @@ Key functionalities include:
 import configparser
 import os
 import re
-import math
-from typing import List
 
 import pathspec
 from google.adk.tools import ToolContext
@@ -38,28 +36,6 @@ def _get_gitignore(repo_path: str) -> pathspec.PathSpec:
         with open(gitignore_path) as f:
             patterns = f.read().splitlines()
     return pathspec.PathSpec.from_lines('gitwildmatch', patterns)
-
-
-def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> List[List[str]]:
-    """Splits a list of file paths into batches of a specified size.
-    
-    This tool retrieves the list of all discovered files from the session state,
-    divides them into smaller batches, and stores these batches back into the
-    session state for iterative processing by the LoopAgent.
-    """
-    file_paths = tool_context.state.get("files", [])
-    logger.debug(f"create_file_batches: Received {len(file_paths)} files from session state.")
-    logger.debug(f"Creating batches for {len(file_paths)} files with batch size {batch_size}")
-    if not file_paths:
-        logger.debug("No files to batch.")
-        tool_context.state["batches"] = [] # Ensure batches is set even if empty
-        return []
-    num_batches = math.ceil(len(file_paths) / batch_size)
-    batches = [file_paths[i * batch_size:(i + 1) * batch_size] for i in range(num_batches)]
-    logger.debug(f"Created {len(batches)} batches.")
-    tool_context.state["batches"] = batches # Store batches in session state
-    return batches
-
 
 def discover_files(repo_path: str, tool_context: ToolContext) -> dict:
     """Discovers all relevant files in the repository and stores their paths in the session state.
