@@ -18,17 +18,16 @@ The overall process orchestrated by `document_summariser_agent` is as follows:
 """
 import re
 
-from google.adk.agents import Agent, SequentialAgent, LoopAgent
-from google.adk.tools import FunctionTool, AgentTool
+from google.adk.agents import Agent, LoopAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_response import LlmResponse
 from google.genai.types import GenerateContentConfig, HttpRetryOptions, Part
 
 from llms_gen_agent.config import logger, setup_config
-from llms_gen_agent.schema_types import DocumentSummariesOutput, BatchSummariesOutput, ProjectSummaryOutput
+from llms_gen_agent.schema_types import BatchSummariesOutput, ProjectSummaryOutput
 
-from .tools import create_file_batches, read_files, update_summaries, finalize_summaries, process_batch_selection
+from .tools import create_file_batches, finalize_summaries, process_batch_selection, read_files, update_summaries
 
 config = setup_config()
 
@@ -105,7 +104,8 @@ The summary should reference any key concepts, classes, best practices, etc.
     Say this: "Introduces an agentic framework for..."
 - If you cannot generate a meaningful summary, use 'No meaningful summary available.' as its summary.
 
-The final output MUST be a JSON object with a single top-level key called 'batch_summaries', which contains a dictionary of file paths to summaries.
+The final output MUST be a JSON object with a single top-level key called 'batch_summaries', 
+which contains a dictionary of file paths to summaries.
 Example: {"batch_summaries": {"/path/to/file1.md":"Summary of file 1.", "/path/to/file2.md":"Summary of file 2."}}
 
 IMPORTANT: Your final response MUST contain ONLY this JSON object.
@@ -146,8 +146,10 @@ batch_creation_agent = Agent(
         model=config.model,
         retry_options=retry_options
     ),    
-    instruction="""You MUST call the `create_file_batches` tool. This is your ONLY task.
-    The `create_file_batches` tool will read the 'files' from the session state, create batches, and store them in the 'batches' session state key.
+    instruction=f"""You MUST call the `create_file_batches` tool with a `batch_size` of {config.batch_size}.
+    This is your ONLY task.
+    The `create_file_batches` tool will read the 'files' from the session state, create batches, 
+    and store them in the 'batches' session state key.
     Do NOT respond with anything else. Just call the tool.""",
     tools=[create_file_batches]
 )
@@ -173,7 +175,8 @@ update_summaries_agent = Agent(
         retry_options=retry_options
     ),    
     instruction="""You MUST call the `update_summaries` tool. This is your ONLY task.
-    The `update_summaries` tool will merge the 'batch_summaries' from the session state into the 'all_summaries' dictionary in the session state.
+    The `update_summaries` tool will merge the 'batch_summaries' from the session state into the 'all_summaries' dictionary 
+    in the session state.
     Do NOT respond with anything else. Just call the tool.""",
     tools=[update_summaries]
 )
@@ -188,11 +191,12 @@ project_summariser_agent = Agent(
     ),    
     instruction="""Read the content of the project's README.md file (if available in session state as 'readme_content').
     Then, review the 'all_summaries' from the session state.
-    Generate a two-paragraph summary of the entire project based on these inputs.
+    Generate a three-paragraph summary of the entire project based on these inputs.
     The output should be a JSON object with a single key 'project_summary' containing the generated summary.""",
     tools=[read_files], # To read the README
     output_schema=ProjectSummaryOutput,
-    output_key="project_summary_raw"
+    output_key="project_summary_raw",
+    after_model_callback=clean_json_callback # Apply callback here
 )
 
 # This agent will process one batch sequentially
@@ -225,14 +229,15 @@ final_summary_agent = Agent(
         model=config.model,
         retry_options=retry_options
     ),    
-    instruction="""Call the `finalize_summaries` tool to combine all collected summaries and the project summary into the final output format.""",
+    instruction="""Call the `finalize_summaries` tool to combine all collected summaries and the project summary 
+    into the final output format.""",
     tools=[finalize_summaries]
 )
 
 # This is the main document summariser agent, orchestrating the entire process.
 document_summariser_agent = SequentialAgent(
     name="document_summariser_agent",
-    description="Orchestrates the entire file summarization process including batching and looping.",
+    description="Orchestrates the entire sequential file summarization process including batching and looping.",
     sub_agents=[
         batch_creation_agent, # Step 1: Create batches of files
         batch_processing_loop, # Step 2: Process each batch in a loop

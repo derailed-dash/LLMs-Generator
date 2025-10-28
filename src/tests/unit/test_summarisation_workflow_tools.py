@@ -1,12 +1,15 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from google.adk.tools import ToolContext
+
 from llms_gen_agent.sub_agents.doc_summariser.tools import (
-    create_file_batches, 
-    process_batch_selection, 
-    update_summaries, 
-    finalize_summaries
+    create_file_batches,
+    finalize_summaries,
+    process_batch_selection,
+    update_summaries,
 )
+
 
 @pytest.fixture
 def mock_tool_context():

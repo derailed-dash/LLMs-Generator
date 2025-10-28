@@ -8,9 +8,10 @@ These tools facilitate various steps in the document summarization workflow, inc
 - `finalize_summaries`: Combines all collected summaries and the project summary into the final output format.
 """
 import math
+
 from google.adk.tools import ToolContext
 
-from llms_gen_agent.config import logger, setup_config
+from llms_gen_agent.config import logger
 
 
 def read_files(tool_context: ToolContext) -> dict:
@@ -30,7 +31,6 @@ def read_files(tool_context: ToolContext) -> dict:
         A dictionary with a "status" key indicating the outcome ("success").
     """
     logger.debug("Executing read_files")
-    config = setup_config() # dynamically load config
     
     # The files to read are either in 'current_batch' (for batched processing)
     # or in 'files' (for direct processing or initial setup).
@@ -61,7 +61,7 @@ def read_files(tool_context: ToolContext) -> dict:
     
     return response
 
-def create_file_batches(tool_context: ToolContext, batch_size: int = 10) -> list[list[str]]:
+def create_file_batches(tool_context: ToolContext, batch_size: int) -> list[list[str]]:
     """Splits a list of file paths into batches of a specified size.
     
     This tool retrieves the list of all discovered files from the session state,
@@ -122,7 +122,8 @@ def update_summaries(tool_context: ToolContext) -> dict:
     
     tool_context.state["all_summaries"].update(batch_summaries)
     
-    logger.debug(f"Merged {len(batch_summaries)} summaries from current batch. Total summaries collected: {len(tool_context.state['all_summaries'])}")
+    logger.debug(f"Merged {len(batch_summaries)} summaries from current batch. "
+                 f"Total summaries collected: {len(tool_context.state['all_summaries'])}")
     
     return {"status": "success"}
 
