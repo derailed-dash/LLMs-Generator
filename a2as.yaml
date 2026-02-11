@@ -1,0 +1,523 @@
+manifest:
+  version: "0.1.3"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: derailed-dash/llms-generator
+    source: https://github.com/derailed-dash/llms-generator
+    branch: main
+    commit: "07fccffb"
+    scope: [src/llms_gen_agent/agent.py, src/llms_gen_agent/config.py, src/llms_gen_agent/sub_agents/doc_summariser/__init__.py,
+      src/llms_gen_agent/sub_agents/doc_summariser/agent.py, src/llms_gen_agent/sub_agents/doc_summariser/tools.py, src/llms_gen_agent/tools.py]
+  issued:
+    by: A2AS.org
+    at: '2026-02-11T16:40:20Z'
+    url: https://a2as.org/certified/agents/derailed-dash/llms-generator
+  signatures:
+    digest: sha256:7x5X0zn1WT8rBnw9mfJ_2tc0MrRwhHtK6vIkpi2BIjM
+    key: ed25519:f5R6eyp1QcYKBTmbfO5Pry0jU5gcPoHK2rC_6l_6xxI
+    sig: ed25519:NrsZGfU4nwwE2vEAl0TzvXiDyo-ARDLi_ZphtAolu-JgILbCxgi5rI9TUB8hF8bo3WLUErq2GbKFZOkjEAXxDg
+
+agents:
+  batch_creation_agent:
+    type: instance
+    models: [config.model]
+    tools: [create_file_batches]
+    params:
+      name: batch_creation_agent
+      description: Creates batches of files.
+      instruction: [This is your ONLY task., 'The `create_file_batches` tool will read the ''files'' from the session state,
+          create batches,', and store them in the 'batches' session state key., Do NOT respond with anything else. Just call
+          the tool.]
+  batch_processing_loop:
+    type: instance
+    params:
+      name: batch_processing_loop
+      description: Processes all file batches in a loop.
+      max_iterations: "200"
+      sub_agents: [batch_selector_agent, single_batch_processor]
+  batch_selector_agent:
+    type: instance
+    models: [config.model]
+    tools: [process_batch_selection]
+    params:
+      name: batch_selector_agent
+      description: Selects the next batch of files to process or exits the loop.
+      instruction: [Call the `process_batch_selection` tool to manage batch selection and loop termination.]
+  content_summariser_agent:
+    type: instance
+    models: [config.model]
+    params:
+      name: content_summarizer_agent
+      description: An agent that summarizes collected file contents and aggregates them.
+      instruction: [You are an expert summariser., Your task is to summarise EACH individual file's content in no more than
+          four sentences., 'The summary should reference any key concepts, classes, best practices, etc.', '- Do NOT start
+          summaries with text like "This document is about..." or "This page introduces..."', Just immediately describe the
+          content. E.g., '- Rather than this: "This document explains how to configure streaming behavior..."', 'Say this:
+          "Explains how to configure streaming behavior..."', '- Rather than this: "This page introduces an agentic framework
+          for..."', 'Say this: "Introduces an agentic framework for..."', '- If you cannot generate a meaningful summary,
+          use ''No meaningful summary available.'' as its summary.', 'The final output MUST be a JSON object with a single
+          top-level key called ''batch_summaries'',', which contains a dictionary of file paths to summaries., 'IMPORTANT:
+          Your final response MUST contain ONLY this JSON object.', 'DO NOT include any other text, explanations, or markdown
+          code block delimiters.', 'FILE CONTENTS START:', '{files_content}', '---', 'FILE CONTENTS END:', Now return the
+          JSON object.]
+      generate_content_config:
+        class: GenerateContentConfig
+        temperature: "0.5"
+        top_p: "1"
+        max_output_tokens: "64000"
+      output_schema: BatchSummariesOutput
+      output_key: batch_summaries
+      after_model_callback: clean_json_callback
+  document_summariser_agent:
+    type: instance
+    params:
+      name: document_summariser_agent
+      description: Orchestrates the entire sequential file summarization process including batching and looping.
+      sub_agents: [batch_creation_agent, batch_processing_loop, project_summariser_agent, final_summary_agent]
+  file_reader_agent:
+    type: instance
+    models: [config.model]
+    tools: [read_files]
+    params:
+      name: file_reader_agent
+      description: An agent that reads the content of multiple files and stores them in session state.
+      instruction: ['You are a specialist in reading files. Your job is to run the `read_files`,', 'which will read a list
+          of files in your session state, and store their contents.', 'IMPORTANT: you should NOT pass any arguments to the
+          `read_files` tool.', It will retrieve its data from session state.]
+  final_summary_agent:
+    type: instance
+    models: [config.model]
+    tools: [finalize_summaries]
+    params:
+      name: final_summary_agent
+      description: Finalizes the document summaries by combining all individual and project summaries.
+      instruction: [Call the `finalize_summaries` tool to combine all collected summaries and the project summary, into the
+          final output format.]
+  generate_llms_coordinator:
+    type: instance
+    models: [config.model]
+    tools: [discover_files, generate_llms_txt, document_summariser_agent]
+    params:
+      name: generate_llms_coordinator
+      description: An agent that generates a llms.txt file for a given repository. Coordinates overall process.
+      instruction: [You are an expert in analyzing code repositories and generating `llms.txt` files., Your goal is to create
+          a comprehensive and accurate `llms.txt` file that will help other LLMs, 'understand the repository. When the user
+          asks you to generate the file, you should ask for the', 'absolute path to the repository/folder, and optionally
+          an output path.', 'Here''s the detailed process you should follow:', '1.  **Discover Files**: Use the `discover_files`
+          tool with the provided `repo_path` to get a list of all', 'relevant files paths, in the return value `files`.',
+        '2.  **Check Files List**: Check you received a success response and a list of files.', 'If not, you should provide
+          an appropriate response to the user and STOP HERE.', '3.  **Summarize Files**: Delegate to the `document_summariser_agent`
+          Agent Tool.', '**CRITICAL: This tool MUST be called with NO arguments.**', The `document_summariser_agent` will
+          read the list of files from the session state, (which was populated by the `discover_files` tool)., The `document_summariser_agent`
+          will then return the full set of summaries as JSON, 'with a single key `summaries` that contains a dictionary of
+          all the path:summary pairs.', '**Example of correct call:** `document_summariser_agent()`', '4.  **Check Summary
+          Response**: you should have received a JSON response containing the summaries.', 'This contains all the files originally
+          discovered, with each mapped to a summary.', 'If so, continue. If not, you should provide an appropriate response
+          to the user and STOP HERE.', '5.  **Generate `llms.txt**: Call the `generate_llms_txt` tool.', 'Provide `repo_path`
+          as an argument. If the user provided an output path,', provide it as the `output_path` argument., The tool will
+          determine other required values from session state., 6.  **Response**, 'Finally, respond to the user confirming
+          whether the `llms.txt` creation was successful.', 'State the path where the file has been created, which is stored
+          in session state key `llms_txt_path`.']
+      generate_content_config:
+        class: GenerateContentConfig
+        temperature: "0.1"
+        top_p: "1"
+        max_output_tokens: "60000"
+  project_summariser_agent:
+    type: instance
+    models: [config.model]
+    tools: [read_files]
+    params:
+      name: project_summariser_agent
+      description: Creates the final project summary from all file summaries.
+      instruction: [Read the content of the project's README.md file (if available in session state as 'readme_content').,
+        'Then, review the ''all_summaries'' from the session state.', Generate a three-paragraph summary of the entire project
+          based on these inputs., The output should be a JSON object with a single key 'project_summary' containing the generated
+          summary.]
+      output_schema: ProjectSummaryOutput
+      output_key: project_summary_raw
+      after_model_callback: clean_json_callback
+  single_batch_processor:
+    type: instance
+    params:
+      name: single_batch_processor
+      description: Reads and summarizes one batch of files.
+      sub_agents: [file_reader_agent, content_summariser_agent, update_summaries_agent]
+  update_summaries_agent:
+    type: instance
+    models: [config.model]
+    tools: [update_summaries]
+    params:
+      name: update_summaries_agent
+      description: Appends the latest batch summaries to the main summary list.
+      instruction: [You MUST call the `update_summaries` tool. This is your ONLY task., The `update_summaries` tool will merge
+          the 'batch_summaries' from the session state into the 'all_summaries' dictionary, in the session state., Do NOT
+          respond with anything else. Just call the tool.]
+
+models:
+  config.model:
+    type: function
+    agents: [generate_llms_coordinator, file_reader_agent, content_summariser_agent, batch_creation_agent, batch_selector_agent,
+      update_summaries_agent, project_summariser_agent, final_summary_agent]
+    params:
+      wrapper: Gemini
+      model: config.model
+      retry_options: HttpRetryOptions(initial_delay=config.backoff_init_delay, attempts=config.backoff_attempts, exp_base=config.backoff_multiplier,
+        max_delay=config.backoff_max_delay)
+
+tools:
+  create_file_batches:
+    type: function
+    agents: [batch_creation_agent]
+    params:
+      description: |-
+        Splits a list of file paths into batches of a specified size.
+
+        This tool retrieves the list of all discovered files from the session state,
+        divides them into smaller batches, and stores these batches back into the
+        session state for iterative processing by the LoopAgent.
+  discover_files:
+    type: function
+    agents: [generate_llms_coordinator]
+    params:
+      description: |-
+        Discovers all relevant files in the repository and stores their paths in the session state.
+
+        This tool scans the specified repository, identifies files relevant for summarization
+        (based on configured extensions), and excludes directories and files specified in
+        `.env` and `.gitignore`. The discovered file paths are stored in `tool_context.state["files"]`.
+
+        Args:
+            repo_path: The absolute path to the repository to scan.
+
+        Returns:
+            A dictionary with "status" (success/failure) and "files" (a list of file paths).
+  document_summariser_agent:
+    type: agent
+    agents: [generate_llms_coordinator]
+    params:
+      wrapper: AgentTool
+      agent: document_summariser_agent
+  finalize_summaries:
+    type: function
+    agents: [final_summary_agent]
+    params:
+      description: |-
+        Combines all individual file summaries and the project summary into the final doc_summaries format.
+
+        This tool is called at the end of the summarization process. It retrieves all
+        collected file summaries and the generated project summary from the session state,
+        combines them into the final expected output structure, and stores this
+        in `tool_context.state["doc_summaries"]`.
+  generate_llms_txt:
+    type: function
+    agents: [generate_llms_coordinator]
+    params:
+      description: |-
+        Generates a comprehensive llms.txt sitemap file for a given repository.
+
+        This tool orchestrates the creation of an AI/LLM-friendly Markdown file (`llms.txt`)
+        that provides a structured overview of the repository's contents. It retrieves
+        the project summary and individual file summaries from the session state,
+        organizes files into sections based on their directory structure, and
+        generates Markdown links with their respective summaries.
+
+        Args:
+            repo_path: The absolute path to the root of the repository to scan.
+            output_path: Optional. The absolute path to save the llms.txt file.
+                         If not provided, it will be saved in a `temp` directory in the current working directory.
+
+        Other required data (summaries, file lists) is retrieved from tool_context.state.
+
+        Returns:
+            A dictionary with:
+            - "status": "success" if the file was generated successfully.
+            - "llms_txt_path": The absolute path to the generated llms.txt file.
+  process_batch_selection:
+    type: function
+    agents: [batch_selector_agent]
+    params:
+      description: Manages the batch selection for the loop, increments iteration counter, and logs batch info.
+  read_files:
+    type: function
+    agents: [file_reader_agent, project_summariser_agent]
+    params:
+      description: |-
+        Reads the content of files and stores it in the tool context.
+
+        This tool retrieves a list of file paths from the `current_batch` key in the
+        `tool_context.state`. It then iterates through this list, reads the
+        content of each file, and stores it in a dictionary under the
+        `files_content` key in the `tool_context.state`. The file path serves as
+        the key for its content.
+
+        It avoids re-reading files by checking if the file path already exists
+        in the `files_content` dictionary (though for batches, this is less likely to occur).
+
+        Returns:
+            A dictionary with a "status" key indicating the outcome ("success").
+  update_summaries:
+    type: function
+    agents: [update_summaries_agent]
+    params:
+      description: |-
+        Merges the batch_summaries into the all_summaries in the session state.
+
+        This tool is called after each batch is summarized. It retrieves the summaries
+        for the current batch from the session state and merges them into a master
+        dictionary of all collected summaries.
+
+teams:
+  batch_processing_loop:
+    type: loop
+    agents: [batch_processing_loop, batch_selector_agent, single_batch_processor]
+  document_summariser_agent:
+    type: sequential
+    agents: [document_summariser_agent, batch_creation_agent, batch_processing_loop, project_summariser_agent, final_summary_agent]
+  single_batch_processor:
+    type: sequential
+    agents: [single_batch_processor, file_reader_agent, content_summariser_agent, update_summaries_agent]
+
+imports:
+  Agent: google.adk.agents.Agent
+  AgentTool: google.adk.tools.agent_tool.AgentTool
+  asyncio: asyncio
+  auth: google.auth
+  BatchSummariesOutput: llms_gen_agent.schema_types.BatchSummariesOutput
+  call_agent_async: client_fe.runner.call_agent_async
+  Callable: collections.abc.Callable
+  CallbackContext: google.adk.agents.callback_context.CallbackContext
+  ConfigError: common_utils.exceptions.ConfigError
+  configparser: configparser
+  Console: rich.console.Console
+  Content: google.genai.types.Content
+  create_file_batches: tools.create_file_batches
+  current_config: llms_gen_agent.config.current_config
+  dataclass: dataclasses.dataclass
+  discover_files: tools.discover_files
+  document_summariser_agent: agent.document_summariser_agent
+  finalize_summaries: tools.finalize_summaries
+  find_dotenv: dotenv.find_dotenv
+  Gemini: google.adk.models.google_llm.Gemini
+  generate_llms_txt: tools.generate_llms_txt
+  GenerateContentConfig: google.genai.types.GenerateContentConfig
+  HttpRetryOptions: google.genai.types.HttpRetryOptions
+  InMemorySessionService: google.adk.sessions.InMemorySessionService
+  LlmResponse: google.adk.models.llm_response.LlmResponse
+  load_dotenv: dotenv.load_dotenv
+  logger: config.logger
+  LoopAgent: google.adk.agents.LoopAgent
+  math: math
+  os: os
+  Part: google.genai.types.Part
+  pathspec: pathspec
+  process_batch_selection: tools.process_batch_selection
+  ProjectSummaryOutput: llms_gen_agent.schema_types.ProjectSummaryOutput
+  re: re
+  read_files: tools.read_files
+  root_agent: llms_gen_agent.agent.root_agent
+  Runner: google.adk.runners.Runner
+  SequentialAgent: google.adk.agents.SequentialAgent
+  setup_config: config.setup_config
+  setup_logger: common_utils.logging_utils.setup_logger
+  StateKeys: llms_gen_agent.constants.StateKeys
+  ToolContext: google.adk.tools.ToolContext
+  typer: typer
+  update_summaries: tools.update_summaries
+
+functions:
+  __str__:
+    type: sync
+    module: src.llms_gen_agent.config
+    args: [self]
+  _get_env_var:
+    type: sync
+    module: src.llms_gen_agent.config
+    args: [key, default_value, type_converter]
+  _get_gitignore:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [repo_path]
+    params:
+      returns: pathspec.PathSpec
+  _get_llms_txt_base_url:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [repo_path]
+    params:
+      returns: str
+  _get_remote_url_from_git_config:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [git_config_path]
+  _get_repo_details:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [repo_path]
+    params:
+      returns: tuple
+  _map_files_to_effective_sections:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [all_files, repo_path, max_depth]
+    params:
+      returns: dict
+  _write_llms_txt_section:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [f, directory, repo_path, files, file_to_effective_section_dir, doc_summaries, base_url]
+  call_agent_async:
+    type: async
+    module: src.client_fe.runner
+    args: [query]
+    params:
+      returns: None
+  clean_json_callback:
+    type: sync
+    module: src.llms_gen_agent.sub_agents.doc_summariser.agent
+    args: [callback_context, llm_response]
+  create_file_batches:
+    type: sync
+    module: src.llms_gen_agent.sub_agents.doc_summariser.tools
+    args: [tool_context, batch_size]
+    params:
+      returns: list[list[str]]
+  discover_files:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [repo_path, tool_context]
+    params:
+      returns: dict
+  finalize_summaries:
+    type: sync
+    module: src.llms_gen_agent.sub_agents.doc_summariser.tools
+    args: [tool_context]
+    params:
+      returns: dict
+  generate:
+    type: sync
+    module: src.client_fe.cli
+    args: [repo_path, output_path, log_level, max_files_to_process]
+  generate_llms_txt:
+    type: sync
+    module: src.llms_gen_agent.tools
+    args: [repo_path, tool_context, output_path]
+    params:
+      returns: dict
+  invalidate:
+    type: sync
+    module: src.llms_gen_agent.config
+    args: [self]
+  process_batch_selection:
+    type: sync
+    module: src.llms_gen_agent.sub_agents.doc_summariser.tools
+    args: [tool_context]
+    params:
+      returns: dict
+  read_files:
+    type: sync
+    module: src.llms_gen_agent.sub_agents.doc_summariser.tools
+    args: [tool_context]
+    params:
+      returns: dict
+  setup_config:
+    type: sync
+    module: src.llms_gen_agent.config
+    params:
+      returns: Config
+  setup_session_and_runner:
+    type: async
+    module: src.client_fe.runner
+  update_summaries:
+    type: sync
+    module: src.llms_gen_agent.sub_agents.doc_summariser.tools
+    args: [tool_context]
+    params:
+      returns: dict
+
+variables:
+  AGENT_NAME:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [find_dotenv()]
+  key:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [find_dotenv()]
+  LOG_LEVEL:
+    type: env
+    params:
+      caller: [os.environ]
+  MAX_FILES_TO_PROCESS:
+    type: env
+    params:
+      caller: [os.environ]
+
+files:
+  .gitignore:
+    type: pattern
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      pattern: [repo_path, .gitignore]
+  effective_section_relative_path:
+    type: pattern
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      pattern: [repo_path, effective_section_relative_path]
+  file_path:
+    type: variable
+    actions: [read]
+    params:
+      caller: [open, os.path.dirname, os.path.basename]
+      alias: [f]
+  git_config_path:
+    type: variable
+    actions: [read]
+    params:
+      caller: [os.path.exists, config.read]
+  gitignore_path:
+    type: variable
+    actions: [read]
+    params:
+      caller: [os.path.exists, open]
+  llms.txt:
+    type: pattern
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      pattern: [temp_dir, llms.txt]
+  llms_txt_path:
+    type: variable
+    actions: [write]
+    params:
+      caller: [open]
+      alias: [f]
+  output_dir:
+    type: variable
+    actions: [read]
+    params:
+      caller: [os.path.exists, os.makedirs]
+  output_path:
+    type: variable
+    actions: [read]
+    params:
+      caller: [os.path.dirname]
+  relative_file_path:
+    type: variable
+    actions: [read]
+    params:
+      caller: [os.path.dirname]
+  repo_path:
+    type: variable
+    actions: [read]
+    params:
+      caller: [os.walk]
+  temp_dir:
+    type: variable
+    actions: [read]
+    params:
+      caller: [os.makedirs]
